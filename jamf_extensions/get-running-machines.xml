@@ -1,0 +1,1 @@
+echo "<result>`prlctl list -a | awk -v my_status="running" '$2 ~ my_status { $1=$2=$3=""; gsub(/^ */, ""); print }' | tr '\n' ',' | sed 's/,$//'`</result>"

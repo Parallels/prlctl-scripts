@@ -1,0 +1,1 @@
+echo "<result>`prlsrvctl info | awk -F ': ' '/^License/ {print $2}'`</result>"
