@@ -1,1 +1,2 @@
-echo "<result>`prlctl list -a | grep -oE '\{[a-f0-9\-]+\}' | wc -l | awk '{$1=$1};1'`</result>"
+user=root
+echo "<result>`sudo -u $user prlctl list -a | grep -oE '\{[a-f0-9\-]+\}' | wc -l | awk '{$1=$1};1'`</result>"
