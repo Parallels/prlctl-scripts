@@ -31,18 +31,14 @@ get_all_running_machines() {
   for user in $(get_host_users); do
     line=""
     id=""
-    echo $user
     [ -n "${user}" ] && [ -e "/Users/${user}" ] || continue
 
-    input_data=$(sudo -u $user prlctl list -a)
-    echo "input_data: $input_data"
-    echo $USERNAME
-    echo $HOME
-    prlctl list
+    input_data=$(sudo -u $user /usr/local/bin/prlctl list -a)
     if [ -z "$input_data" ]; then
       echo "No data"
       continue
     fi
+
     filtered_data=$(echo "$input_data" | awk -v filter="running" '$2 == filter {gsub(/[{}]/, "", $1); print $1}')
 
     echo "$filtered_data" | awk '{gsub(/[{}]/, "", $1); print $1}' | while read uuid; do
@@ -74,10 +70,10 @@ suspend() {
     return
   fi
 
-  os=$(sudo -u $1 prlctl list -i $2 | grep "OS:" | cut -f2 -d":" | tr -d '[:space:]')
+  os=$(sudo -u $1 /usr/local/bin/prlctl list -i $2 | grep "OS:" | cut -f2 -d":" | tr -d '[:space:]')
   if [ "$os" != "macosx" ]; then
     echo "Suspending $2"
-    sudo -u $1 prlctl suspend "$2"
+    sudo -u $1 /usr/local/bin/prlctl suspend "$2"
     return
   fi
   echo "Ignoring $1, suspend not available"
@@ -116,7 +112,8 @@ install() {
 }
 
 run() {
-  echo "Running Service as $USERNAME"
+  username=$(id -un)
+  echo "1Running Service as $username"
   echo "Press ctrl + c to exit"
   PREVIOUS_STATE="No"
   while true; do
