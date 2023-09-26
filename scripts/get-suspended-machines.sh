@@ -31,7 +31,7 @@ for user in $(get_host_users); do
         if [ "$uuid" != "UUID" ]; then
           echo "$uuid" >>"$temp_file"
           machineName=$(echo "$input_data" | awk -v filter="$uuid" '$1 ~ filter { $1=$2=$3=""; gsub(/^ */, ""); print }')
-          if [ "$machineName" != "" ] && [ "$machineName" != "NAME\n" ]; then
+          if [ "$machineName" != "" ] && [ "$machineName" != NAME* ]; then
             echo "$machineName" >>"$temp_names"
           fi
         fi
