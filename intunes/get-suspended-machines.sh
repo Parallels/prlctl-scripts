@@ -1,28 +1,7 @@
 #!/bin/bash
 
-STATUS=""
+STATUS="suspended"
 FORMAT=""
-
-while [[ $# -gt 0 ]]; do
-  key="$1"
-
-  case $key in
-  -s | --status)
-    STATUS="$2"
-    shift # move past argument
-    shift # move past value
-    ;;
-  -f | --format)
-    FORMAT="$2"
-    shift # move past argument
-    shift # move past value
-    ;;
-  *)
-    # unknown option
-    shift # move past argument
-    ;;
-  esac
-done
 
 get_host_users() {
   dscl . list /Users | grep -v "^_" | grep '\S'
