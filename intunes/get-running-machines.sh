@@ -25,15 +25,19 @@ for user in $(get_host_users); do
     filtered_data=$(echo "$input_data" | awk -v filter="$STATUS" '$2 == filter {gsub(/[{}]/, "", $1); print $1}')
   fi
 
-  echo "$filtered_data" | awk '{gsub(/[{}]/, "", $1); print $1}' | while read uuid; do
-    if ! grep -q "$uuid" "$temp_file"; then
-      if [ "$uuid" != "UUID" ]; then
-        echo "$uuid" >>"$temp_file"
-        machineName=$(echo "$input_data" | awk -v filter="$uuid" '$1 ~ filter { $1=$2=$3=""; gsub(/^ */, ""); print }')
-        echo "$machineName" >>"$temp_names"
+  if [ -n "$filtered_data" ]; then
+    echo "$filtered_data" | awk '{gsub(/[{}]/, "", $1); print $1}' | while read uuid; do
+      if ! grep -q "$uuid" "$temp_file"; then
+        if [ "$uuid" != "UUID" ]; then
+          echo "$uuid" >>"$temp_file"
+          machineName=$(echo "$input_data" | awk -v filter="$uuid" '$1 ~ filter { $1=$2=$3=""; gsub(/^ */, ""); print }')
+          if [ "$machineName" != "" ] && [ "$machineName" != "NAME\n" ]; then
+            echo "$machineName" >>"$temp_names"
+          fi
+        fi
       fi
-    fi
-  done
+    done
+  fi
 done
 
 lines=$(cat "$temp_names" | tr '\n' ',' | sed 's/,$//')

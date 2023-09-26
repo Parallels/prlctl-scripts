@@ -15,15 +15,17 @@ for user in $(get_host_users); do
 
   input_data=$(sudo -u $user /usr/local/bin/prlctl list -a)
 
-  echo "$input_data" | awk '{gsub(/[{}]/, "", $1); print $1}' | while read uuid; do
-    if ! grep -q "$uuid" "$temp_file"; then
-      if [ "$uuid" != "UUID" ]; then
-        echo "$uuid" >>"$temp_file"
-        machineName=$(echo "$input_data" | awk -v filter="$uuid" '$1 ~ filter { $1=$2=$3=""; gsub(/^ */, ""); print }')
-        echo "$machineName" >>"$temp_names"
+  if [ -n "$filtered_data" ]; then
+    echo "$input_data" | awk '{gsub(/[{}]/, "", $1); print $1}' | while read uuid; do
+      if ! grep -q "$uuid" "$temp_file"; then
+        if [ "$uuid" != "UUID" ]; then
+          echo "$uuid" >>"$temp_file"
+          machineName=$(echo "$input_data" | awk -v filter="$uuid" '$1 ~ filter { $1=$2=$3=""; gsub(/^ */, ""); print }')
+          echo "$machineName" >>"$temp_names"
+        fi
       fi
-    fi
-  done
+    done
+  fi
 done
 
 lines=$(cat "$temp_names" | tr '\n' ',' | sed 's/,$//')

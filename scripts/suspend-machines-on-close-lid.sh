@@ -9,6 +9,11 @@ while [[ $# -gt 0 ]]; do
     shift # move past argument
     shift # move past value
     ;;
+  -u | --uninstall)
+    OPS="UNINSTALL"
+    shift # move past argument
+    shift # move past value
+    ;;
   *)
     OPS="RUN"
     shift # move past argument
@@ -79,6 +84,14 @@ suspend() {
   echo "Ignoring $1, suspend not available"
 }
 
+uninstall() {
+ echo "Uninstalling Service on $1"
+
+  launchctl unload /Library/LaunchDaemons/com.parallels.suspend-machines-on-close-lid.plist
+  rm /Library/LaunchDaemons/com.parallels.suspend-machines-on-close-lid.plist
+  echo "Done"
+}
+
 install() {
  echo "Installing Service on $1"
  echo "<?xml version="1.0" encoding="UTF-8"?>
@@ -139,6 +152,8 @@ run() {
 
 if [ "$OPS" == "INSTALL" ]; then
   install "/Users/cjlapao/code/parallels/prlctl-scripts/scripts"
+elif [ "$OPS" == "UNINSTALL" ]; then
+  uninstall
 else
   run
 fi
