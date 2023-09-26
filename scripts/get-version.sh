@@ -1,3 +1,3 @@
-#/bin/bash
+#!/bin/bash
 
-prlsrvctl info | awk -F ': ' '/^Version/ {print $2}'
+/usr/local/bin/prlsrvctl info | awk -F ': ' '/^Version/ {print $2}'

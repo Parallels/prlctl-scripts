@@ -1,4 +1,5 @@
-#/bin/bash
+#!/bin/bash
+
 STATUS=""
 FORMAT=""
 
@@ -25,9 +26,9 @@ done
 
 
 if [ "$FORMAT" = "csv" ]; then
-      prlctl list -a | awk -v my_status="$STATUS" '$2 ~ my_status { $1=$2=$3=""; gsub(/^ */, ""); print }' | tr '\n' ',' | sed 's/,$//'
+      /usr/local/bin/prlctl list -a | awk -v my_status="$STATUS" '$2 ~ my_status { $1=$2=$3=""; gsub(/^ */, ""); print }' | tr '\n' ',' | sed 's/,$//'
 else
-  prlctl list -a | awk -v my_status="$STATUS" '$2 ~ my_status { $1=$2=$3=""; gsub(/^ */, ""); print }'
+  /usr/local/bin/prlctl list -a | awk -v my_status="$STATUS" '$2 ~ my_status { $1=$2=$3=""; gsub(/^ */, ""); print }'
 fi
 
 

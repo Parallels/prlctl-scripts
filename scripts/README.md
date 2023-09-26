@@ -39,3 +39,17 @@ returns how many VMs exist in the backend
 ### `get-version`
 
 returns the version of PD
+
+### `suspend-machines-on-close-lid`
+
+This script will need to be *installed* before it can be used as it will run in the background and listen for the lid closing event. To install it, run the following command:
+
+```bash
+./suspend-machines-on-close-lid -i
+```
+
+Once it is installed it will run in the background and it will suspend all running VMs when the lid is closed. To uninstall it, run the following command:
+
+```bash
+./suspend-machines-on-close-lid -u
+```
