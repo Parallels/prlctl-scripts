@@ -126,7 +126,7 @@ install() {
 
 run() {
   username=$(id -un)
-  echo "1Running Service as $username"
+  echo "Running Service as $username"
   echo "Press ctrl + c to exit"
   PREVIOUS_STATE="No"
   while true; do

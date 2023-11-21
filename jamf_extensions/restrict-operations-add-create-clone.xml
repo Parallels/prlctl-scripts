@@ -1,0 +1,1 @@
+echo "<result>`prlsrvctl set --require-pwd add-vm:on && prlcrvctl set --require-pwd create-vm:on && prlcrvctl set --require-pwd clone-vm:on`</result>"

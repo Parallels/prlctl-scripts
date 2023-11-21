@@ -1,6 +1,6 @@
 # Parallels Command Line Scripts for automation
 
-[![](https://dcbadge.vercel.app/api/server/eTbxN7P6?style=flat&theme=default)](https://discord.gg/eTbxN7P6)
+[![](https://dcbadge.vercel.app/api/server/qbrP22bUUM?style=flat&theme=default)](https://discord.gg/qbrP22bUUM)
 
 ## Introduction
 
