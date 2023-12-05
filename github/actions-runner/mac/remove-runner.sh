@@ -45,6 +45,10 @@ function Remove() {
   echo "Auth Token is $AUTH_TOKEN"
 
   sudo -u $RUN_AS $DESTINATION/actions-runner/config.sh remove --token $AUTH_TOKEN
+    if $? -ne 0; then
+    echo "Failed to remove the runner"
+    exit 1
+  fi
 }
 
 function Cleanup() {
@@ -53,6 +57,10 @@ function Cleanup() {
 
   echo "Removing the service"
   sudo launchctl unload /Library/LaunchDaemons/com.github.actions-runner.plist
+    if $? -ne 0; then
+    echo "Failed to unload the runner service"
+    exit 1
+  fi
   sudo rm -f /Library/LaunchDaemons/com.github.actions-runner.plist
 }
 

@@ -81,6 +81,10 @@ function Install {
   echo "Extracting the latest version of the GitHub Actions runner"
   # Extract the installer
   tar xzf "./actions-runner-linux-${ARCHITECTURE}-${LATEST_VERSION}.tar.gz"
+    if $? -ne 0; then
+    echo "Failed to extract the runner"
+    exit 1
+  fi
   rm "./actions-runner-linux-${ARCHITECTURE}-${LATEST_VERSION}.tar.gz"
 
   echo "Configuring permissions for the runner"  
@@ -107,6 +111,10 @@ function Configure {
     OPTIONS+=" --group $GROUP"
   fi
   sudo -u $RUN_AS  $DESTINATION/actions-runner/config.sh $OPTIONS --unattended
+  if $? -ne 0; then
+    echo "Failed to configure the runner"
+    exit 1
+  fi
 
   # Creating a service file
   read -r -d '' SERVICE <<EOF
@@ -137,6 +145,10 @@ function Start {
   # Start the service
   echo "Starting the service"
   sudo systemctl start actions-runner.service
+    if $? -ne 0; then
+    echo "Failed to start the runner"
+    exit 1
+  fi
 }
 
 Install
