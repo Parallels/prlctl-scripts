@@ -60,7 +60,7 @@ function Install {
   # Get the latest version of the GitHub Actions runner
   LATEST_VERSION=$(curl -s https://api.github.com/repos/actions/runner/releases/latest | sed -n 's/.*"tag_name": "\([^"]*\)".*/\1/p')
   LASTEST_VERSION_SMALL=$(echo $LATEST_VERSION | sed 's/v//g')
-  
+
   # Get the architecture and define some common names
   ARCHITECTURE=$(uname -m)
   if [ "$ARCHITECTURE" == "x86_64" ]; then
@@ -74,27 +74,34 @@ function Install {
 
   echo "Latest version is $LATEST_VERSION for architecture $ARCHITECTURE"
 
-  echo "Downloading the latest version of the GitHub Actions runner"  
+  echo "Downloading the latest version of the GitHub Actions runner"
   # Download the latest runner package
   curl -s -o "actions-runner-osx-${ARCHITECTURE}-${LATEST_VERSION}.tar.gz" -L "https://github.com/actions/runner/releases/download/${LATEST_VERSION}/actions-runner-osx-${ARCHITECTURE}-${LASTEST_VERSION_SMALL}.tar.gz"
-  
+
   echo "Extracting the latest version of the GitHub Actions runner"
   # Extract the installer
   tar xzf "./actions-runner-osx-${ARCHITECTURE}-${LATEST_VERSION}.tar.gz"
-    if $? -ne 0; then
+  if $? -ne 0; then
     echo "Failed extract the runner"
     exit 1
   fi
   rm "./actions-runner-osx-${ARCHITECTURE}-${LATEST_VERSION}.tar.gz"
 
-  echo "Configuring permissions for the runner"  
+  echo "Configuring permissions for the runner"
   sudo chown -R $RUN_AS $DESTINATION/actions-runner
 }
 
 function Configure {
   # Getting the registration token
   echo "Configuring the actions runner for $ORGANIZATION_NAME"
-  AUTH_TOKEN=$(curl -s -L -X POST -H "Accept: application/vnd.github+json" -H "Authorization: token $TOKEN" -H "X-GitHub-Api-Version: 2022-11-28" https://api.github.com/orgs/$ORGANIZATION_NAME/actions/runners/registration-token | sed -n 's/.*"token": "\([^"]*\)".*/\1/p')
+  URL_PATH="orgs/$ORGANIZATION_NAME"
+  if [[ $ORGANIZATION_NAME == *"/"* ]]; then
+    echo "This seems to be a request for a repository runner"
+    URL_PATH="repos/$ORGANIZATION_NAME"
+  fi
+
+  # Rest of the code...
+  AUTH_TOKEN=$(curl -s -L -X POST -H "Accept: application/vnd.github+json" -H "Authorization: token $TOKEN" -H "X-GitHub-Api-Version: 2022-11-28" https://api.github.com/$URL_PATH/actions/runners/registration-token | sed -n 's/.*"token": "\([^"]*\)".*/\1/p')
   echo "Auth Token is $AUTH_TOKEN"
 
   # Create the runner and start the configuration experience
@@ -107,10 +114,10 @@ function Configure {
     OPTIONS+=" --name $NAME"
   fi
   if [ -n "$GROUP" ]; then
-  echo "test"
+    echo "test"
     OPTIONS+=" --group $GROUP"
   fi
-  sudo -u $RUN_AS  $DESTINATION/actions-runner/config.sh $OPTIONS --unattended
+  sudo -u $RUN_AS $DESTINATION/actions-runner/config.sh $OPTIONS --unattended
   if $? -ne 0; then
     echo "Failed configure the runner"
     exit 1
@@ -155,7 +162,7 @@ function Start {
   # Start the service
   echo "Starting the service"
   sudo launchctl load /Library/LaunchDaemons/com.github.actions-runner.plist
-    if $? -ne 0; then
+  if $? -ne 0; then
     echo "Failed to start the runner"
     exit 1
   fi

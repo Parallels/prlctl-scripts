@@ -41,7 +41,14 @@ fi
 function Remove() {
     # Getting the registration token
   echo "Removing the actions runner from $ORGANIZATION_NAME"
-  AUTH_TOKEN=$(curl -s -L -X POST -H "Accept: application/vnd.github+json" -H "Authorization: token $TOKEN" -H "X-GitHub-Api-Version: 2022-11-28" https://api.github.com/orgs/$ORGANIZATION_NAME/actions/runners/registration-token | jq -r '.token')
+  URL_PATH="orgs/$ORGANIZATION_NAME"
+  if [[ $ORGANIZATION_NAME == *"/"* ]]; then
+    echo "This seems to be a request for a repository runner"
+    URL_PATH="repos/$ORGANIZATION_NAME"
+  fi
+
+  # Rest of the code...
+  AUTH_TOKEN=$(curl -s -L -X POST -H "Accept: application/vnd.github+json" -H "Authorization: token $TOKEN" -H "X-GitHub-Api-Version: 2022-11-28" https://api.github.com/$URL_PATH/actions/runners/registration-token | sed -n 's/.*"token": "\([^"]*\)".*/\1/p')
   echo "Auth Token is $AUTH_TOKEN"
 
   sudo -u $RUN_AS $DESTINATION/actions-runner/config.sh remove --token $AUTH_TOKEN
