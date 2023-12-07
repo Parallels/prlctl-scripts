@@ -52,7 +52,7 @@ function Remove() {
   echo "Auth Token is $AUTH_TOKEN"
 
   sudo -u $RUN_AS $DESTINATION/actions-runner/config.sh remove --token $AUTH_TOKEN
-    if $? -ne 0; then
+    if [ $? -ne 0 ]; then
     echo "Failed to remove the runner"
     exit 1
   fi

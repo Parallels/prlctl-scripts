@@ -60,7 +60,7 @@ function Install {
   # Get the latest version of the GitHub Actions runner
   LATEST_VERSION=$(curl -s https://api.github.com/repos/actions/runner/releases/latest | jq -r '.tag_name')
   LASTEST_VERSION_SMALL=$(echo $LATEST_VERSION | sed 's/v//g')
-  
+
   # Get the architecture and define some common names
   ARCHITECTURE=$(uname -m)
   if [ "$ARCHITECTURE" == "x86_64" ]; then
@@ -74,20 +74,20 @@ function Install {
 
   echo "Latest version is $LATEST_VERSION for architecture $ARCHITECTURE"
 
-  echo "Downloading the latest version of the GitHub Actions runner"  
+  echo "Downloading the latest version of the GitHub Actions runner"
   # Download the latest runner package
   curl -s -o "actions-runner-linux-${ARCHITECTURE}-${LATEST_VERSION}.tar.gz" -L "https://github.com/actions/runner/releases/download/${LATEST_VERSION}/actions-runner-linux-${ARCHITECTURE}-${LASTEST_VERSION_SMALL}.tar.gz"
-  
+
   echo "Extracting the latest version of the GitHub Actions runner"
   # Extract the installer
   tar xzf "./actions-runner-linux-${ARCHITECTURE}-${LATEST_VERSION}.tar.gz"
-    if $? -ne 0; then
+  if [ $? -ne 0 ]; then
     echo "Failed to extract the runner"
     exit 1
   fi
   rm "./actions-runner-linux-${ARCHITECTURE}-${LATEST_VERSION}.tar.gz"
 
-  echo "Configuring permissions for the runner"  
+  echo "Configuring permissions for the runner"
   chown -R $RUN_AS:$RUN_AS $DESTINATION/actions-runner
 }
 
@@ -114,11 +114,11 @@ function Configure {
     OPTIONS+=" --name $NAME"
   fi
   if [ -n "$GROUP" ]; then
-  echo "test"
+    echo "test"
     OPTIONS+=" --group $GROUP"
   fi
-  sudo -u $RUN_AS  $DESTINATION/actions-runner/config.sh $OPTIONS --unattended
-  if $? -ne 0; then
+  sudo -u $RUN_AS $DESTINATION/actions-runner/config.sh $OPTIONS --unattended
+  if [ $? -ne 0 ]; then
     echo "Failed to configure the runner"
     exit 1
   fi
@@ -152,7 +152,10 @@ function Start {
   # Start the service
   echo "Starting the service"
   sudo systemctl start actions-runner.service
-    if $? -ne 0; then
+  if [ $? -ne 0 ]; then
+    echo "Failed to start the runner"
+    exit 1
+  fi
     echo "Failed to start the runner"
     exit 1
   fi
