@@ -156,9 +156,6 @@ function Start {
     echo "Failed to start the runner"
     exit 1
   fi
-    echo "Failed to start the runner"
-    exit 1
-  fi
 }
 
 Install
