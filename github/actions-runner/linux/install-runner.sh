@@ -15,7 +15,8 @@ while getopts ":o:t:p:u:n:l:g:" opt; do
 done
 
 if [ -z "$DESTINATION" ]; then
-  DESTINATION="$HOME/actions-runner"
+  echo "Setting the destination to $HOME"
+  DESTINATION="$HOME"
 fi
 
 if [ -z "$RUN_AS" ]; then
