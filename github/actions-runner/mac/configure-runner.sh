@@ -40,7 +40,7 @@ if [ -z "$TOKEN" ]; then
 fi
 
 if [ -z "$DESTINATION" ]; then
-  DESTINATION="$HOME/actions-runner"
+  DESTINATION="$HOME/action-runner"
 fi
 
 if [ -z "$RUN_AS" ]; then
@@ -78,7 +78,7 @@ function Configure {
     echo "test"
     OPTIONS+=" --group $GROUP"
   fi
-  sudo -u $RUN_AS $DESTINATION/actions-runner/config.sh $OPTIONS --unattended
+  sudo -u $RUN_AS $DESTINATION/config.sh $OPTIONS --unattended
   if [ $? -ne 0 ]; then
     echo "Failed configure the runner"
     exit 1
@@ -93,36 +93,36 @@ function Configure {
     <key>UserName</key>
     <string>$RUN_AS</string>
     <key>Label</key>
-    <string>com.github.actions-runner</string>
+    <string>com.github.action-runner</string>
     <key>ProgramArguments</key>
     <array>
-      <string>$DESTINATION/actions-runner/run.sh</string>
+      <string>$DESTINATION/run.sh</string>
     </array>
     <key>RunAtLoad</key>
     <true/>
     <key>KeepAlive</key>
     <true/>
     <key>StandardErrorPath</key>
-    <string>/tmp/actions-runner.err</string>
+    <string>/tmp/action-runner.err</string>
     <key>StandardOutPath</key>
-    <string>/tmp/actions-runner.out</string> 
+    <string>/tmp/action-runner.out</string> 
   </dict>
 </plist>
 EOF
 
   # Create a service file
-  echo "$SERVICE" >$DESTINATION/com.github.actions-runner.plist
+  echo "$SERVICE" >$DESTINATION/com.github.action-runner.plist
 
   # Register the service
-  sudo mv $DESTINATION/com.github.actions-runner.plist /Library/LaunchDaemons/com.github.actions-runner.plist
-  sudo chown root:wheel /Library/LaunchDaemons/com.github.actions-runner.plist
-  sudo chmod 644 /Library/LaunchDaemons/com.github.actions-runner.plist
+  sudo mv $DESTINATION/com.github.action-runner.plist /Library/LaunchDaemons/com.github.action-runner.plist
+  sudo chown root:wheel /Library/LaunchDaemons/com.github.action-runner.plist
+  sudo chmod 644 /Library/LaunchDaemons/com.github.action-runner.plist
 }
 
 function Start {
   # Start the service
   echo "Starting the service"
-  sudo launchctl load /Library/LaunchDaemons/com.github.actions-runner.plist
+  sudo launchctl load /Library/LaunchDaemons/com.github.action-runner.plist
   if [ $? -ne 0 ]; then
     echo "Failed to start the runner"
     exit 1

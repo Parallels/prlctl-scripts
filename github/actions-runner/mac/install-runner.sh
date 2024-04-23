@@ -14,8 +14,6 @@ while getopts ":o:t:p:u:n:l:g:" opt; do
   esac
 done
 
-echo "Installing the GitHub Actions runner into $DESTINATION"
-
 if [ -z "$DESTINATION" ]; then
   echo "Setting the destination to $HOME"
   DESTINATION="$HOME"
@@ -32,9 +30,9 @@ fi
 function Install {
   echo "Getting the latest version of the GitHub Actions runner"
   # Create a folder
-  echo "Creating a folder $DESTINATION/actions-runner"
-  sudo mkdir $DESTINATION/actions-runner
-  cd $DESTINATION/actions-runner
+  echo "Creating a folder $DESTINATION/action-runner"
+  mkdir $DESTINATION/action-runner
+  cd $DESTINATION/action-runner
   # Get the latest version of the GitHub Actions runner
   LATEST_VERSION=$(curl -s https://api.github.com/repos/actions/runner/releases/latest | sed -n 's/.*"tag_name": "\([^"]*\)".*/\1/p')
   LASTEST_VERSION_SMALL=$(echo $LATEST_VERSION | sed 's/v//g')
@@ -66,8 +64,10 @@ function Install {
   rm "./actions-runner-osx-${ARCHITECTURE}-${LATEST_VERSION}.tar.gz"
 
   echo "Configuring permissions for the runner"
-  sudo chown -R $RUN_AS $DESTINATION/actions-runner
+  chown -R $RUN_AS $DESTINATION/action-runner
 }
+
+echo "Installing the GitHub Actions runner into $DESTINATION as $RUN_AS"
 
 Install
 echo "Done"

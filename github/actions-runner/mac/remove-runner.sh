@@ -31,7 +31,7 @@ if [ -z "$TOKEN" ]; then
 fi
 
 if [ -z "$DESTINATION" ]; then
-  DESTINATION="$HOME/actions-runner"
+  DESTINATION="$HOME/action-runner"
 fi
 
 if [ -z "$RUN_AS" ]; then
@@ -51,7 +51,7 @@ function Remove() {
   AUTH_TOKEN=$(curl -s -L -X POST -H "Accept: application/vnd.github+json" -H "Authorization: token $TOKEN" -H "X-GitHub-Api-Version: 2022-11-28" https://api.github.com/$URL_PATH/actions/runners/registration-token | sed -n 's/.*"token": "\([^"]*\)".*/\1/p')
   echo "Auth Token is $AUTH_TOKEN"
   
-  sudo -u $RUN_AS $DESTINATION/actions-runner/config.sh remove --token $AUTH_TOKEN
+  sudo -u $RUN_AS $DESTINATION/action-runner/config.sh remove --token $AUTH_TOKEN
     if [ $? -ne 0 ]; then
     echo "Failed to remove the runner"
     exit 1
@@ -60,15 +60,15 @@ function Remove() {
 
 function Cleanup() {
   echo "Cleaning up the installation"
-  sudo rm -rf $DESTINATION/actions-runner
+  sudo rm -rf $DESTINATION/action-runner
 
   echo "Removing the service"
-  sudo launchctl unload /Library/LaunchDaemons/com.github.actions-runner.plist
+  sudo launchctl unload /Library/LaunchDaemons/com.github.action-runner.plist
     if [ $? -ne 0 ]; then
     echo "Failed to unload the runner service"
     exit 1
   fi
-  sudo rm -f /Library/LaunchDaemons/com.github.actions-runner.plist
+  sudo rm -f /Library/LaunchDaemons/com.github.action-runner.plist
 }
 
 Remove

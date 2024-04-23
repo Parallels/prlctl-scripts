@@ -40,7 +40,7 @@ if [ -z "$TOKEN" ]; then
 fi
 
 if [ -z "$DESTINATION" ]; then
-  DESTINATION="$HOME/actions-runner"
+  DESTINATION="$HOME/action-runner"
 fi
 
 if [ -z "$RUN_AS" ]; then
@@ -74,10 +74,9 @@ function Configure {
     OPTIONS+=" --name $NAME"
   fi
   if [ -n "$GROUP" ]; then
-    echo "test"
     OPTIONS+=" --group $GROUP"
   fi
-  sudo -u $RUN_AS $DESTINATION/actions-runner/config.sh $OPTIONS --unattended
+  sudo -u $RUN_AS $DESTINATION/config.sh $OPTIONS --unattended
   if [ $? -ne 0 ]; then
     echo "Failed to configure the runner"
     exit 1
@@ -93,7 +92,7 @@ After=network.target
 Type=simple
 User=$RUN_AS
 WorkingDirectory=$DESTINATION
-ExecStart=$DESTINATION/actions-runner/run.sh
+ExecStart=$DESTINATION/run.sh
 Restart=on-failure
 
 [Install]
@@ -101,17 +100,17 @@ WantedBy=multi-user.target
 EOF
 
   # Create a service file
-  echo "$SERVICE" >$DESTINATION/actions-runner.service
+  echo "$SERVICE" >$DESTINATION/action-runner.service
 
   # Register the service
-  sudo mv $DESTINATION/actions-runner.service /etc/systemd/system/actions-runner.service
-  sudo systemctl enable actions-runner.service
+  sudo mv $DESTINATION/action-runner.service /etc/systemd/system/action-runner.service
+  sudo systemctl enable action-runner.service
 }
 
 function Start {
   # Start the service
   echo "Starting the service"
-  sudo systemctl start actions-runner.service
+  sudo systemctl start action-runner.service
   if [ $? -ne 0 ]; then
     echo "Failed to start the runner"
     exit 1
