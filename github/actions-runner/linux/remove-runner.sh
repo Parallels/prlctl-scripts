@@ -60,7 +60,7 @@ function Remove() {
 
 function Cleanup() {
   echo "Cleaning up the installation"
-  sudo rm -rf $DESTINATION/action-runner
+  sudo rm -rf $DESTINATION
 
   echo "Removing the service"
   rm -f /etc/systemd/system/actions.runner.service
