@@ -127,6 +127,16 @@ function Start {
     echo "Failed to start the runner"
     exit 1
   fi
+  sudo launchctl unload /Library/LaunchDaemons/com.github.action-runner.plist
+  if [ $? -ne 0 ]; then
+    echo "Failed to start the runner"
+    exit 1
+  fi
+  sudo launchctl load /Library/LaunchDaemons/com.github.action-runner.plist
+  if [ $? -ne 0 ]; then
+    echo "Failed to start the runner"
+    exit 1
+  fi
 }
 
 Configure
