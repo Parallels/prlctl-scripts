@@ -51,11 +51,6 @@ function Install {
   Expand-Archive -Path "actions-runner-win-$ARCHITECTURE-$LASTEST_VERSION_SMALL.zip" -DestinationPath . -Force
 
   Remove-Item -Path "actions-runner-win-$ARCHITECTURE-$LASTEST_VERSION_SMALL.zip"
-
-  Write-Host "Configuring permissions for the runner"
-  $acl = Get-Acl -Path "$DESTINATION/action-runner"
-  $acl.SetOwner([System.Security.Principal.NTAccount]::new($RUN_AS))
-  Set-Acl -Path "$DESTINATION/action-runner" -AclObject $acl
 }
 
 Write-Host "Installing the GitHub Actions runner into $DESTINATION as $RUN_AS"
