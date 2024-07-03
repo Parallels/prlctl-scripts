@@ -1,7 +1,7 @@
 #!/bin/bash
 
 #gettting arguments
-while getopts "ignj:" opt; do
+while getopts "igncj:" opt; do
   case $opt in
   j)
     JOIN="true"
@@ -12,6 +12,9 @@ while getopts "ignj:" opt; do
     ;;
   g)
     MODE="GET_TOKEN"
+    ;;
+  c)
+    MODE="GET_CONFIG"
     ;;
   n)
     MODE="GET_NODES"
@@ -256,7 +259,15 @@ elif [ "$MODE" == "GET_NODES" ]; then
     exit 1
   fi
 
-    microk8s kubectl get nodes
+  microk8s kubectl get nodes
+elif [ "$MODE" == "GET_CONFIG" ]; then
+  EXISTS=$(which microk8s)
+  if [ -z "$EXISTS" ]; then
+    echo "microk8s is not installed, exiting"
+    exit 1
+  fi
+
+  cat /var/snap/microk8s/current/credentials/client.config
 fi
 
 # if $JOIN is set, then join the cluster
