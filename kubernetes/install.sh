@@ -1,7 +1,8 @@
 #!/bin/bash
 
+JOIN_AS_WORKER="false"
 #gettting arguments
-while getopts "igncj:" opt; do
+while getopts "igncwj:" opt; do
   case $opt in
   j)
     echo "Joining cluster $OPTARG"
@@ -19,6 +20,9 @@ while getopts "igncj:" opt; do
     ;;
   n)
     MODE="GET_NODES"
+    ;;
+  w)
+    JOIN_AS_WORKER="true"
     ;;
   \?)
     echo "Invalid option -$OPTARG" >&2
@@ -274,7 +278,11 @@ fi
 # if $JOIN is set, then join the cluster
 if [ -n "$JOIN" ]; then
   echo "Joining an existing cluster $JOIN"
-  microk8s join "$JOIN"
+  if [ "$JOIN_AS_WORKER" == "true" ]; then
+    microk8s join "$JOIN" --worker
+  else
+    microk8s join "$JOIN"
+  fi
 fi
 
 if [ "$MODE" == "INSTALL" ]; then
