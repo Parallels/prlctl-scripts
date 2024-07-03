@@ -4,7 +4,7 @@
 while getopts "igncj:" opt; do
   case $opt in
   j)
-    JOIN="true"
+    JOIN=$OPTARG
     ;;
   i)
     echo "here"
