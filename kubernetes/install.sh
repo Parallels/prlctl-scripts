@@ -272,7 +272,7 @@ fi
 
 # if $JOIN is set, then join the cluster
 if [ -n "$JOIN" ]; then
-  echo "Joining an existing cluster"
+  echo "Joining an existing cluster $JOIN"
   microk8s join "$JOIN"
 fi
 
