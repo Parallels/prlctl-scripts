@@ -4,6 +4,7 @@
 while getopts "igncj:" opt; do
   case $opt in
   j)
+    echo "Joining cluster $OPTARG"
     JOIN=$OPTARG
     ;;
   i)
