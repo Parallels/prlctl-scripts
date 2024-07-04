@@ -285,7 +285,7 @@ if [ -n "$JOIN" ]; then
   fi
 fi
 
-if [ "$MODE" == "INSTALL" ]; then
-  echo "Cluster has been installed"
-  reboot
-fi
+# if [ "$MODE" == "INSTALL" ]; then
+#   echo "Cluster has been installed"
+#   reboot
+# fi
