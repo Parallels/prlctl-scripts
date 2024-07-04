@@ -133,7 +133,7 @@ function install_docker {
   echo "Installing Docker"
   apt-get update
   curl -fsSL https://download.docker.com/linux/ubuntu/gpg | gpg --dearmor --yes -o /usr/share/keyrings/docker.gpg
-  chmod a+r /etc/apt/keyrings/docker.asc
+  chmod a+r /usr/share/keyrings/docker.gpg
 
   echo \
     "deb [arch=amd64 signed-by=/usr/share/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu \
