@@ -57,15 +57,15 @@ function disable_amd64_architecture {
 }
 
 function enable_amd64_sources_2204 {
-  cmd1="deb [arch=amd64] http://archive.ubuntu.com/ubuntu/ $(get_linux_distro_codename) main restricted universe multiverse"
+  cmd1="echo deb [arch=amd64] http://archive.ubuntu.com/ubuntu/ $(get_linux_distro_codename) main restricted universe multiverse"
   cmd2="deb [arch=amd64] http://archive.ubuntu.com/ubuntu/ $(get_linux_distro_codename)-updates main restricted universe multiverse"
   cmd3="deb [arch=amd64] http://archive.ubuntu.com/ubuntu/ $(get_linux_distro_codename)-backports main restricted universe multiverse"
   cmd4="deb [arch=amd64] http://security.ubuntu.com/ubuntu/ $(get_linux_distro_codename)-security main restricted universe multiverse"
   {
-    $cmd1
-    $cmd2
-    $cmd3
-    $cmd4
+    echo "$cmd1"
+    echo "$cmd2"
+    echo "$cmd3"
+    echo "$cmd4"
   } >>/etc/apt/sources.list
 }
 

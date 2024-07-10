@@ -16,8 +16,21 @@ while getopts "hr" opt; do
   esac
 done
 
+function get_os {
+  case "$OSTYPE" in
+  linux*) echo "linux" ;;
+  darwin*) echo "mac" ;;
+  win*) echo "windows" ;;
+  msys*) echo "windows" ;;
+  cygwin*) echo "windows" ;;
+  bsd*) echo "bsd" ;;
+  solaris*) echo "solaris" ;;
+  *) echo "unknown" ;;
+  esac
+}
+
 function generate_random_hostname {
-  echo "ai-$(
+  echo "ubuntu-$(
     head /dev/urandom | tr -dc A-Za-z0-9 | head -c 13
     echo ''
   )"
