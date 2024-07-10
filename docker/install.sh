@@ -201,7 +201,9 @@ function install {
 }
 
 function uninstall {
-  echo "- Detected OS: $OS version: $VERSION"
+  echo "Detected OS: $OS"
+  VERSION="$(get_linux_distro_version)"
+  echo "Detected Ubuntu version: $VERSION"
   if [ "$VERSION" == "24.04" ]; then
     disable_amd64_sources_2404
     disable_amd64_architecture
