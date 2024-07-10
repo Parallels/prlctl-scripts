@@ -18,13 +18,6 @@ while getopts "iu" opt; do
   esac
 done
 
-function generate_random_hostname {
-  echo "ai-$(
-    head /dev/urandom | tr -dc A-Za-z0-9 | head -c 13
-    echo ''
-  )"
-}
-
 function get_os {
   case "$OSTYPE" in
   linux*) echo "linux" ;;
@@ -149,24 +142,6 @@ function uninstall_docker {
   echo "Docker has been uninstalled"
 }
 
-function renew_id {
-  echo "Renewing the Machine ID"
-  if [ -f /etc/machine-id ]; then
-    rm /etc/machine-id
-    systemd-machine-id-setup
-    echo "Machine ID has been renewed to $(cat /etc/machine-id)"
-  fi
-}
-
-function renew_hostname {
-  echo "Renewing the hostname"
-  if [ -f /etc/hostname ]; then
-    echo "$1" >/etc/hostname
-    hostnamectl set-hostname "$1"
-    echo "Hostname has been renewed to $(hostname)"
-  fi
-}
-
 function install_dependencies {
   echo "Installing dependencies"
   apt-get update
@@ -217,9 +192,6 @@ function install {
   echo "Installing a new cluster"
 
   upgrade_system
-  renew_id
-  renew_hostname "$(generate_random_hostname)"
-
   install_dependencies
   install_docker
 }
