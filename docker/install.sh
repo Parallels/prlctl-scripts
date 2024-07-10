@@ -57,7 +57,11 @@ function disable_amd64_architecture {
 }
 
 function enable_amd64_sources_2204 {
-  cmd1="echo deb [arch=amd64] http://archive.ubuntu.com/ubuntu/ $(get_linux_distro_codename) main restricted universe multiverse"
+  echo "Enabling amd64 sources for Ubuntu 22.04"
+  sed -i 's/^deb http/deb [arch=arm64] &/' /etc/apt/sources.list
+  sed -i 's/^deb-src http/deb-src [arch=arm64] &/' /etc/apt/sources.list
+
+  cmd1="deb [arch=amd64] http://archive.ubuntu.com/ubuntu/ $(get_linux_distro_codename) main restricted universe multiverse"
   cmd2="deb [arch=amd64] http://archive.ubuntu.com/ubuntu/ $(get_linux_distro_codename)-updates main restricted universe multiverse"
   cmd3="deb [arch=amd64] http://archive.ubuntu.com/ubuntu/ $(get_linux_distro_codename)-backports main restricted universe multiverse"
   cmd4="deb [arch=amd64] http://security.ubuntu.com/ubuntu/ $(get_linux_distro_codename)-security main restricted universe multiverse"
@@ -71,8 +75,8 @@ function enable_amd64_sources_2204 {
 
 function disable_amd64_sources_2204 {
   echo "Disabling amd64 sources for Ubuntu 22.04"
-  sed -i '/deb \[arch=amd64\] http:\/\/archive.ubuntu.com\/ubuntu\//d' /etc/apt/sources.list
-  sed -i '/deb \[arch=amd64\] http:\/\/security.ubuntu.com\/ubuntu\//d' /etc/apt/sources.list
+  sed -i 's/deb \[arch=arm64\] http/deb http/' /etc/apt/sources.list
+  sed -i 's/deb-src \[arch=arm64\] http/deb-src http/' /etc/apt/sources.list
 }
 
 function enable_amd64_sources_2404 {
