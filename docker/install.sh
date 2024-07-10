@@ -77,6 +77,7 @@ function disable_amd64_sources_2204 {
   echo "Disabling amd64 sources for Ubuntu 22.04"
   sed -i 's/deb \[arch=arm64\] http/deb http/' /etc/apt/sources.list
   sed -i 's/deb-src \[arch=arm64\] http/deb-src http/' /etc/apt/sources.list
+  sed -i '/^deb \[arch=amd64\]/d' /etc/apt/sources.list
 }
 
 function enable_amd64_sources_2404 {
