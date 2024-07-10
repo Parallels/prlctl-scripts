@@ -1,0 +1,91 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: microsoft-sql
+spec:
+  finalizers:
+    - kubernetes
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: microsoft-sql
+  namespace: microsoft-sql
+  labels:
+    app: microsoft-sql
+data:
+  ACCEPT_EULA: "Y"
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: microsoft-sql
+  namespace: microsoft-sql
+  labels:
+    app: microsoft-sql
+type: Opaque
+data:
+  MSSQL_SA_PASSWORD: VmVyeVN0cjBuZ1BAc3N3MHJk
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: microsoft-sql
+  namespace: microsoft-sql
+  labels:
+    app: microsoft-sql
+automountServiceAccountToken: true
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: microsoft-sql
+  namespace: microsoft-sql
+  labels:
+    app: microsoft-sql
+spec:
+  selector:
+    matchLabels:
+      app: microsoft-sql
+  template:
+    metadata:
+      labels:
+        app: microsoft-sql
+    spec:
+      serviceAccountName: microsoft-sql
+      containers:
+        - name: microsoft-sql
+          image: mcr.microsoft.com/mssql/server:2022-latest
+          imagePullPolicy: Always
+          env:
+            - name: ACCEPT_EULA
+              valueFrom: 
+                configMapKeyRef:
+                  name: microsoft-sql
+                  key: ACCEPT_EULA
+            - name: MSSQL_SA_PASSWORD 
+              valueFrom: 
+                secretKeyRef:
+                  name: microsoft-sql
+                  key: MSSQL_SA_PASSWORD
+          ports:
+            - name: tcp
+              containerPort: 1433
+              protocol: TCP
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: microsoft-sql
+  namespace:  microsoft-sql
+  labels:
+      app: microsoft-sql
+spec:
+  type: ClusterIP
+  ports:
+    - port: 1433
+      targetPort: tcp
+      protocol: TCP
+      name: http
+  selector:
+    app: microsoft-sql
