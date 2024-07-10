@@ -235,5 +235,5 @@ if [ "$MODE" == "INSTALL" ]; then
 fi
 
 if [ "$MODE" == "UNINSTALL" ]; then
-  uninstall_docker
+  uninstall
 fi
