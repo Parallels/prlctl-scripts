@@ -201,8 +201,7 @@ function install {
 }
 
 function uninstall {
-  disable_amd64_architecture
-
+  echo "- Detected OS: $OS"
   if [ "$VERSION" == "24.04" ]; then
     disable_amd64_sources_2404
     disable_amd64_architecture
