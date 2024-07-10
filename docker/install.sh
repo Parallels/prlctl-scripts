@@ -196,7 +196,6 @@ function install {
 
   echo "Installing a new cluster"
 
-  upgrade_system
   install_dependencies
   install_docker
 }
