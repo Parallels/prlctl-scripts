@@ -131,7 +131,7 @@ function install_docker {
   chmod a+r /usr/share/keyrings/docker.gpg
 
   echo \
-    "deb [arch=amd64 signed-by=/usr/share/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu \
+    "deb [signed-by=/usr/share/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu \
   $(. /etc/os-release && echo "$VERSION_CODENAME") stable" |
     sudo tee /etc/apt/sources.list.d/docker.list >/dev/null
   apt-get update
