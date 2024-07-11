@@ -95,6 +95,10 @@ function install_ollama {
     echo "Ollama is already installed, skipping installation"
   fi
 
+  systemctl start ollama
+  echo "Waiting for Ollama to start"
+  sleep 10
+
   if [ -z "$PULL_MODEL" ]; then
     pull_model "$DEFAULT_MODEL"
   else

@@ -29,6 +29,13 @@ function get_os {
   esac
 }
 
+function upgrade_system {
+  echo "Upgrading the system"
+  apt-get update
+  apt-get upgrade -y
+  echo "System has been upgraded"
+}
+
 function generate_random_hostname {
   echo "ubuntu-$(
     head /dev/urandom | tr -dc A-Za-z0-9 | head -c 13

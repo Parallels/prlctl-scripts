@@ -161,13 +161,6 @@ function uninstall_dependencies {
   echo "Dependencies have been uninstalled"
 }
 
-function upgrade_system {
-  echo "Upgrading the system"
-  apt-get update
-  apt-get upgrade -y
-  echo "System has been upgraded"
-}
-
 function install {
   echo "- Detected OS: $OS"
 
