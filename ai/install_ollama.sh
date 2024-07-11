@@ -90,7 +90,7 @@ function check_for_docker {
 function install_ollama {
   echo "Installing Ollama"
   if ! check_for_ollama; then
-    sudo -u parallels /bin/bash -c "$(curl -fsSL https://ollama.com/install.sh)"
+    /bin/bash -c "$(curl -fsSL https://ollama.com/install.sh)"
   else
     echo "Ollama is already installed, skipping installation"
   fi
