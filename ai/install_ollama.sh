@@ -94,10 +94,15 @@ function install_ollama {
   else
     echo "Ollama is already installed, skipping installation"
   fi
+  
+  mkdir /mnt/ollama_models
+  chown ollama:ollama /mnt/ollama_models
+  chmod 755 /mnt/ollama_models
+  setup_service
 
   systemctl start ollama
   echo "Waiting for Ollama to start"
-  sleep 10
+  sleep 1
 
   if [ -z "$PULL_MODEL" ]; then
     pull_model "$DEFAULT_MODEL"
@@ -111,6 +116,15 @@ function check_for_ollama {
   else
     return 0
   fi
+}
+
+function setup_service {
+  echo "Enabling Ollama API"
+  systemctl stop ollama
+  sed -i '/^Environment=/a Environment="OLLAMA_HOST=0.0.0.0"' /etc/systemd/system/ollama.service
+  sed -i '/^Environment=/a Environment="OLLAMA_MODELS=/mnt/ollama_models"' /etc/systemd/system/ollama.service
+  systemctl daemon-reload
+  systemctl start ollama
 }
 
 function pull_model {
