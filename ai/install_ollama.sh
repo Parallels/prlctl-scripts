@@ -90,14 +90,14 @@ function check_for_docker {
 function install_ollama {
   echo "Installing Ollama"
   if ! check_for_ollama; then
-    /bin/bash -c "$(curl -fsSL https://ollama.com/install.sh)"
+    sudo -u parallels /bin/bash -c "$(curl -fsSL https://ollama.com/install.sh)"
   else
     echo "Ollama is already installed, skipping installation"
   fi
   
-  mkdir /mnt/ollama_models
-  chown ollama:ollama /mnt/ollama_models
-  chmod 755 /mnt/ollama_models
+  mkdir /usr/share/ollama
+  chown ollama:ollama /usr/share/ollama
+  chmod 755 /usr/share/ollama
   setup_service
 
   systemctl start ollama
@@ -140,7 +140,8 @@ function uninstall_ollama {
   rm "$(which ollama)"
   rm -r /usr/share/ollama
 
-  userdel ollama sudo groupdel ollama
+  userdel ollama
+  groupdel ollama
 }
 
 function install {
