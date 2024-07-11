@@ -98,7 +98,7 @@ function install_ollama {
   # mkdir /usr/share/ollama
   # chown ollama:ollama /usr/share/ollama
   # chmod 755 /usr/share/ollama
-  # setup_service
+  setup_service
 
   systemctl start ollama
   echo "Waiting for Ollama to start"
