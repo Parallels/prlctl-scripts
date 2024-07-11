@@ -95,10 +95,10 @@ function install_ollama {
     echo "Ollama is already installed, skipping installation"
   fi
   
-  mkdir /usr/share/ollama
-  chown ollama:ollama /usr/share/ollama
-  chmod 755 /usr/share/ollama
-  setup_service
+  # mkdir /usr/share/ollama
+  # chown ollama:ollama /usr/share/ollama
+  # chmod 755 /usr/share/ollama
+  # setup_service
 
   systemctl start ollama
   echo "Waiting for Ollama to start"
@@ -122,7 +122,7 @@ function setup_service {
   echo "Enabling Ollama API"
   systemctl stop ollama
   sed -i '/^Environment=/a Environment="OLLAMA_HOST=0.0.0.0"' /etc/systemd/system/ollama.service
-  sed -i '/^Environment=/a Environment="OLLAMA_MODELS=/mnt/ollama_models"' /etc/systemd/system/ollama.service
+  # sed -i '/^Environment=/a Environment="OLLAMA_MODELS=/mnt/ollama_models"' /etc/systemd/system/ollama.service
   systemctl daemon-reload
   systemctl start ollama
 }
