@@ -1,7 +1,5 @@
 #!/bin/bash
 
-#!/bin/bash
-
 # Gettting arguments
 MODE="INSTALL"
 while getopts "iu" opt; do
@@ -47,37 +45,37 @@ function get_linux_distro_codename {
 }
 
 function enable_amd64_architecture {
-  dpkg --add-architecture amd64
-  apt-get update
+  sudo dpkg --add-architecture amd64
+  sudo apt-get update
 }
 
 function disable_amd64_architecture {
-  dpkg --remove-architecture amd64
-  apt-get update
+  sudo dpkg --remove-architecture amd64
+  sudo apt-get update
 }
 
 function enable_amd64_sources_2204 {
   echo "Enabling amd64 sources for Ubuntu 22.04"
-  sed -i 's/^deb http/deb [arch=arm64] http/' /etc/apt/sources.list
-  sed -i 's/^deb-src http/deb-src [arch=arm64] http/' /etc/apt/sources.list
+  sudo sed -i 's/^deb http/deb [arch=arm64] http/' /etc/apt/sources.list
+  sudo sed -i 's/^deb-src http/deb-src [arch=arm64] http/' /etc/apt/sources.list
 
   cmd1="deb [arch=amd64] http://archive.ubuntu.com/ubuntu/ $(get_linux_distro_codename) main restricted universe multiverse"
   cmd2="deb [arch=amd64] http://archive.ubuntu.com/ubuntu/ $(get_linux_distro_codename)-updates main restricted universe multiverse"
   cmd3="deb [arch=amd64] http://archive.ubuntu.com/ubuntu/ $(get_linux_distro_codename)-backports main restricted universe multiverse"
   cmd4="deb [arch=amd64] http://security.ubuntu.com/ubuntu/ $(get_linux_distro_codename)-security main restricted universe multiverse"
   {
-    echo "$cmd1"
-    echo "$cmd2"
-    echo "$cmd3"
-    echo "$cmd4"
+    sudo echo "$cmd1"
+    sudo echo "$cmd2"
+    sudo echo "$cmd3"
+    sudo echo "$cmd4"
   } >>/etc/apt/sources.list
 }
 
 function disable_amd64_sources_2204 {
   echo "Disabling amd64 sources for Ubuntu 22.04"
-  sed -i 's/deb \[arch=arm64\] http/deb http/' /etc/apt/sources.list
-  sed -i 's/deb-src \[arch=arm64\] http/deb-src http/' /etc/apt/sources.list
-  sed -i '/^deb \[arch=amd64\]/d' /etc/apt/sources.list
+  sudo sed -i 's/deb \[arch=arm64\] http/deb http/' /etc/apt/sources.list
+  sudo sed -i 's/deb-src \[arch=arm64\] http/deb-src http/' /etc/apt/sources.list
+  sudo sed -i '/^deb \[arch=amd64\]/d' /etc/apt/sources.list
 }
 
 function enable_amd64_sources_2404 {
@@ -114,14 +112,14 @@ Signed-By: /usr/share/keyrings/ubuntu-archive-keyring.gpg
 
 EOF
   )
-  cp /etc/apt/sources.list.d/ubuntu.sources /etc/apt/sources.list.d/ubuntu.sources.bak
-  echo "$CONTENT" >/etc/apt/sources.list.d/ubuntu.sources
+  sudo cp /etc/apt/sources.list.d/ubuntu.sources /etc/apt/sources.list.d/ubuntu.sources.bak
+  sudo echo "$CONTENT" >/etc/apt/sources.list.d/ubuntu.sources
 }
 
 function disable_amd64_sources_2404 {
   echo "Disabling amd64 sources for Ubuntu 24.04"
-  rm /etc/apt/sources.list.d/ubuntu.sources
-  mv /etc/apt/sources.list.d/ubuntu.sources.bak /etc/apt/sources.list.d/ubuntu.sources
+  sudo rm /etc/apt/sources.list.d/ubuntu.sources
+  sudo mv /etc/apt/sources.list.d/ubuntu.sources.bak /etc/apt/sources.list.d/ubuntu.sources
 }
 
 function install_docker {
@@ -134,30 +132,30 @@ function install_docker {
     "deb [signed-by=/usr/share/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu \
   $(. /etc/os-release && echo "$VERSION_CODENAME") stable" |
     sudo tee /etc/apt/sources.list.d/docker.list >/dev/null
-  apt-get update
+  sudo apt update
 
-  apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+  sudo apt install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
   echo "Docker has been installed"
 }
 
 function uninstall_docker {
   echo "Uninstalling Docker"
-  apt-get purge -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
-  apt-get autoremove -y
+  sudo apt purge -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+  sudo apt autoremove -y
   echo "Docker has been uninstalled"
 }
 
 function install_dependencies {
   echo "Installing dependencies"
-  apt-get update
-  apt-get install -y curl wget git jq ca-certificates apt-transport-https
+  sudo apt update
+  sudo apt install -y curl wget git jq ca-certificates apt-transport-https
   echo "Dependencies have been installed"
 }
 
 function uninstall_dependencies {
   echo "Uninstalling dependencies"
-  apt-get purge -y curl git jq
-  apt-get autoremove -y
+  sudo apt purge -y curl git jq
+  sudo apt autoremove -y
   echo "Dependencies have been uninstalled"
 }
 
@@ -207,12 +205,6 @@ function uninstall {
     disable_amd64_architecture
   fi
 }
-
-# Check if the script is running as root (sudo), if not, exit
-if [ "$(id -u)" != "0" ]; then
-  echo "This script must be run as root" 1>&2
-  exit 1
-fi
 
 OS=$(get_os)
 if [ "$OS" != "linux" ]; then

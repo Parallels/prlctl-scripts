@@ -120,11 +120,11 @@ function check_for_ollama {
 
 function setup_service {
   echo "Enabling Ollama API"
-  systemctl stop ollama
+  sudo systemctl stop ollama
   sed -i '/^Environment=/a Environment="OLLAMA_HOST=0.0.0.0"' /etc/systemd/system/ollama.service
   # sed -i '/^Environment=/a Environment="OLLAMA_MODELS=/mnt/ollama_models"' /etc/systemd/system/ollama.service
-  systemctl daemon-reload
-  systemctl start ollama
+  sudo systemctl daemon-reload
+  sudo systemctl start ollama
 }
 
 function pull_model {
@@ -134,14 +134,14 @@ function pull_model {
 
 function uninstall_ollama {
   echo "Uninstalling Ollama"
-  systemctl stop ollama
-  systemctl disable ollama
+  sudo systemctl stop ollama
+  sudo systemctl disable ollama
   rm /etc/systemd/system/ollama.service
   rm "$(which ollama)"
   rm -r /usr/share/ollama
 
-  userdel ollama
-  groupdel ollama
+  sudo userdel ollama
+  sudo groupdel ollama
 }
 
 function install {
@@ -154,9 +154,8 @@ function install {
       install_docker
     fi
 
-    docker run -d -p "$UI_PORT":8080 --add-host=host.docker.internal:host-gateway -v open-webui:/app/backend/data --name open-webui --restart always ghcr.io/open-webui/open-webui:main
+    sudo docker run -d -p "$UI_PORT":8080 --add-host=host.docker.internal:host-gateway -v open-webui:/app/backend/data --name open-webui --restart always ghcr.io/open-webui/open-webui:main
   fi
-
 }
 
 function uninstall {
@@ -166,14 +165,10 @@ function uninstall {
     echo "Docker is not installed, skipping uninstallation"
     return
   fi
+  sudo docker stop open-webui
+  sudo docker rm open-webui --force
   uninstall_docker
 }
-
-# Check if the script is running as root (sudo), if not, exit
-if [ "$(id -u)" != "0" ]; then
-  echo "This script must be run as root" 1>&2
-  exit 1
-fi
 
 OS=$(get_os)
 if [ "$OS" != "linux" ]; then
