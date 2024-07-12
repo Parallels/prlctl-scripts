@@ -100,7 +100,7 @@ function install_ollama {
   # chmod 755 /usr/share/ollama
   setup_service
 
-  systemctl start ollama
+  sudo systemctl start ollama
   echo "Waiting for Ollama to start"
   sleep 1
 

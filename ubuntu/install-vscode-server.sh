@@ -68,7 +68,7 @@ function install() {
   echo "Installing Visual Studio Code"
 
   DEBIAN_FRONTEND=noninteractive sudo apt install curl gpg
-  curl -fsSL https://packages.microsoft.com/keys/microsoft.asc | gpg --dearmor --yes -o /usr/share/keyrings/packages.microsoft.gpg
+  curl -fsSL https://packages.microsoft.com/keys/microsoft.asc | sudo gpg --dearmor --yes -o /usr/share/keyrings/packages.microsoft.gpg
   sudo chmod a+r /usr/share/keyrings/packages.microsoft.gpg
 
   echo \

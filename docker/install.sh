@@ -125,7 +125,7 @@ function disable_amd64_sources_2404 {
 function install_docker {
   echo "Installing Docker"
   apt-get update
-  curl -fsSL https://download.docker.com/linux/ubuntu/gpg | gpg --dearmor --yes -o /usr/share/keyrings/docker.gpg
+  curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor --yes -o /usr/share/keyrings/docker.gpg
   chmod a+r /usr/share/keyrings/docker.gpg
 
   echo \
