@@ -121,7 +121,7 @@ function check_for_ollama {
 function setup_service {
   echo "Enabling Ollama API"
   sudo systemctl stop ollama
-  sed -i '/^Environment=/a Environment="OLLAMA_HOST=0.0.0.0"' /etc/systemd/system/ollama.service
+  sudo sed -i '/^Environment=/a Environment="OLLAMA_HOST=0.0.0.0"' /etc/systemd/system/ollama.service
   # sed -i '/^Environment=/a Environment="OLLAMA_MODELS=/mnt/ollama_models"' /etc/systemd/system/ollama.service
   sudo systemctl daemon-reload
   sudo systemctl start ollama
