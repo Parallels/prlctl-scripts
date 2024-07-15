@@ -15,7 +15,7 @@ while [[ $# -gt 0 ]]; do
     MODE="UNINSTALL"
     shift # past argument
     ;;
-  --as-service)
+  --enable-tunnel)
     ENABLE_SERVICE="true"
     shift # past argument
     ;;
@@ -60,19 +60,23 @@ function get_linux_distro_codename {
 }
 
 install_service() {
-  code tunnel service install
+  code tunnel service install  --accept-server-license-terms --name $TUNNEL_NAME
   sudo loginctl enable-linger $USER
 }
 
 function install() {
   echo "Installing Visual Studio Code"
+  if command -v code &>/dev/null; then
+    echo "Visual Studio Code is already installed, skipping installation"
+    return
+  fi
 
   DEBIAN_FRONTEND=noninteractive sudo apt install curl gpg
   curl -fsSL https://packages.microsoft.com/keys/microsoft.asc | sudo gpg --dearmor --yes -o /usr/share/keyrings/packages.microsoft.gpg
   sudo chmod a+r /usr/share/keyrings/packages.microsoft.gpg
 
   echo \
-    "deb [arch=amd64,arm64,armhf signed-by=/etc/apt/keyrings/packages.microsoft.gpg] https://packages.microsoft.com/repos/code stable main" |
+    "deb [arch=amd64,arm64,armhf signed-by=/usr/share/keyrings/packages.microsoft.gpg] https://packages.microsoft.com/repos/code stable main" |
     sudo tee /etc/apt/sources.list.d/vscode.list >/dev/null
   rm -f packages.microsoft.gpg
   DEBIAN_FRONTEND=noninteractive sudo apt install -y apt-transport-https
@@ -82,16 +86,21 @@ function install() {
 }
 
 function login() {
-  code code tunnel --accept-server-license-terms --disable-telemetry --name $TUNNEL_NAME
+  code tunnel user login
 }
 
 function uninstall() {
   echo "Uninstalling Visual Studio Code"
-  code tunnel service uninstall
-  sudo apt remove -y code
-  sudo apt autoremove -y
+  if command -v code &>/dev/null; then
+    code tunnel service uninstall
+    sudo apt remove -y code
+    sudo apt autoremove -y
+  fi
+
   sudo rm -f /etc/apt/keyrings/packages.microsoft.gpg
   sudo rm -f /etc/apt/sources.list.d/vscode.list
+  sudo rm -f /usr/share/keyrings/packages.microsoft.gpg
+  sudo rm -rf /home/$USER/.vscode
 
   echo "Visual Studio Code has been uninstalled"
 }
@@ -128,16 +137,9 @@ if [ "$MODE" == "INSTALL" ]; then
     echo "Visual Studio Code is already installed, skipping installation"
   fi
 
-  if [ -n "$AS_USER" ]; then
+  if [ "$ENABLE_SERVICE" = "true" ]; then
     login
-
-    if [ "$ENABLE_SERVICE" = "true" ]; then
-      install_service
-    fi
-  fi
-
-  if [ "$ENABLE_SERVICE" = "true" ] && [ -z "$AS_USER" ]; then
-    echo "You need to use the --user o start the tunnel as a service"
+    install_service
   fi
 fi
 
