@@ -151,7 +151,7 @@ function install() {
 
   generate_requirements
 
-  source /home/$USER/.python_env/env/bin/activate
+  source /home/$USER/.python_env/python_env/bin/activate
   pip3 install --upgrade pip
 
   pip3 install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cpu --no-cache-dir
@@ -160,7 +160,7 @@ function install() {
 
   pip3 install  -r requirements.txt --no-cache-dir
 
-  echo "source /home/$USER/.python_env/env/bin/activate" >> ~/.bashrc
+  echo "source /home/$USER/.python_env/python_env/bin/activate" >> ~/.bashrc
 
   cd "$current_folder" || exit
 }
