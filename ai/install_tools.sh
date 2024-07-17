@@ -135,18 +135,19 @@ function install() {
   echo "Installing AI toolset"
 
   sudo apt update
-  sudo apt install -y  --no-install-recommends pandoc netcat-openbsd curl jq gcc
+  sudo apt install -y  --no-install-recommends pandoc netcat-openbsd curl jq gcc cmake
   sudo apt install -y  --no-install-recommends python3-pip python3-venv
   sudo apt install -y  --no-install-recommends ffmpeg libsm6 libxext6
+  sudo apt install -y libhdf5-dev cython3
 
   echo "Creating virtual environment"
   current_folder=$(pwd)
-  if [ ! -d "$HOME"/.pytorch_env ]; then
-    mkdir "$HOME"/.pytorch_env
+  if [ ! -d "$HOME"/.python_env ]; then
+    mkdir "$HOME"/.python_env
   fi
 
-  cd "$HOME"/.pytorch_env || exit
-  python3 -m venv env
+  cd "$HOME"/.python_env || exit
+  python3 -m venv python_env
 
   generate_requirements
 
@@ -154,7 +155,12 @@ function install() {
   pip3 install --upgrade pip
 
   pip3 install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cpu --no-cache-dir
-  # pip install  -r requirements.txt --no-cache-dir
+  pip3 install ftfy regex requests pandas seaborn facesudo 
+  pip3 install opencv-python pycocotools tensorflow --no-cache-dir
+
+  pip3 install  -r requirements.txt --no-cache-dir
+
+  echo "source /home/$USER/env/bin/activate" >> ~/.bashrc
 
   cd "$current_folder" || exit
 }

@@ -1,17 +1,42 @@
 #!/bin/bash
 
+MODE="REGENERATE_ALL"
 HOSTNAME=""
 REBOOT="false"
-while getopts "hr" opt; do
-  case $opt in
-  h)
-    HOSTNAME="$OPTARG"
+
+while [[ $# -gt 0 ]]; do
+  case $1 in
+  --regenerate)
+    MODE="REGENERATE_ALL"
+    shift
     ;;
-  r)
+  --regenerate-id)
+    MODE="REGENERATE_ID"
+    shift
+    ;;
+  --regenerate-hostname)
+    MODE="REGENERATE_HOSTNAME"
+    shift
+    ;;
+  --upgrade)
+    MODE="UPGRADE"
+    shift
+    ;;
+  --get-os)
+    MODE="GET_OS"
+    ;;
+  --hostname)
+    HOSTNAME=$2
+    shift
+    shift
+    ;;
+  -reboot)
     REBOOT="true"
+    shift
     ;;
-  \?)
-    echo "Invalid option -$OPTARG" >&2
+  *)
+    echo "Invalid option $1" >&2
+    exit 1
     ;;
   esac
 done
@@ -73,14 +98,32 @@ if [ "$OS" != "linux" ]; then
   exit 1
 fi
 
-renew_id
-if [ -z "$HOSTNAME" ]; then
-  renew_hostname "$(generate_random_hostname)"
-else
-  renew_hostname "$HOSTNAME"
-fi
+if [ "$MODE" == "REGENERATE_ALL" ]; then
+  renew_id
+  if [ -z "$HOSTNAME" ]; then
+    renew_hostname "$(generate_random_hostname)"
+  else
+    renew_hostname "$HOSTNAME"
+  fi
 
-if [ "$REBOOT" == "true" ]; then
-  echo "Rebooting the system"
-  reboot
+  if [ "$REBOOT" == "true" ]; then
+    echo "Rebooting the system"
+    reboot
+  fi
+elif [ "$MODE" == "REGENERATE_ID" ]; then
+  renew_id
+  if [ "$REBOOT" == "true" ]; then
+    echo "Rebooting the system"
+    reboot
+  fi
+elif [ "$MODE" == "REGENERATE_HOSTNAME" ]; then
+  if [ -z "$HOSTNAME" ]; then
+    renew_hostname "$(generate_random_hostname)"
+  else
+    renew_hostname "$HOSTNAME"
+  fi
+elif [ "$MODE" == "UPGRADE" ]; then
+  upgrade_system
+elif [ "$MODE" == "GET_OS" ]; then
+  get_os
 fi
