@@ -157,6 +157,7 @@ function install() {
   pip3 install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cpu --no-cache-dir
   pip3 install ftfy regex requests pandas seaborn facesudo 
   pip3 install opencv-python pycocotools tensorflow --no-cache-dir
+  pip3 install accelerate
 
   pip3 install  -r requirements.txt --no-cache-dir
 
