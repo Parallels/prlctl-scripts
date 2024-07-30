@@ -158,6 +158,9 @@ function install() {
   pip3 install ftfy regex requests pandas seaborn facesudo 
   pip3 install opencv-python pycocotools tensorflow --no-cache-dir
   pip3 install accelerate
+  pip3 install llama-cpp-python
+  pip3 install imutils
+  pip3 install sentencepiece optimum
 
   pip3 install  -r requirements.txt --no-cache-dir
 
