@@ -4,7 +4,7 @@
 MODE="INSTALL"
 ENABLE_UI=false
 UI_PORT=8080
-DEFAULT_MODEL="phi3:mini"
+DEFAULT_MODEL=""
 PULL_MODEL=""
 while [[ $# -gt 0 ]]; do
   case $1 in
@@ -105,7 +105,7 @@ function install_ollama {
   sleep 1
 
   if [ -z "$PULL_MODEL" ]; then
-    pull_model "$DEFAULT_MODEL"
+    echo "No model provided, skipping model pull"
   else
     pull_model "$PULL_MODEL"
   fi
@@ -162,12 +162,11 @@ function uninstall {
   uninstall_ollama
 
   if ! check_for_docker; then
-    echo "Docker is not installed, skipping uninstallation"
+    echo "Docker is not installed, skipping UI uninstall"
     return
   fi
   sudo docker stop open-webui
   sudo docker rm open-webui --force
-  uninstall_docker
 }
 
 OS=$(get_os)

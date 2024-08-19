@@ -1,31 +1,55 @@
 #!/bin/bash
 
 JOIN_AS_WORKER="false"
-#gettting arguments
-while getopts "igncwj:" opt; do
-  case $opt in
-  j)
+while [[ $# -gt 0 ]]; do
+  case $1 in
+  -j)
     echo "Joining cluster $OPTARG"
-    JOIN=$OPTARG
+    JOIN=$2
+    shift # past argument
+    shift # past value
     ;;
-  i)
-    echo "here"
+  --join)
+    echo "Joining cluster $OPTARG"
+    JOIN=$2
+    shift # past argument
+    shift # past value
+    ;;
+  -i)
     MODE="INSTALL"
+    shift # past argument
     ;;
-  g)
+  --install)
+    MODE="INSTALL"
+    shift # past argument
+    ;;
+  -u)
+    MODE="UNINSTALL"
+    shift # past argument
+    ;;
+  --uninstall)
+    MODE="UNINSTALL"
+    shift # past argument
+    ;;
+  --get-token)
     MODE="GET_TOKEN"
+    shift # past argument
     ;;
-  c)
+  --get-config)
     MODE="GET_CONFIG"
+    shift # past argument
     ;;
-  n)
+  --get-nodes)
     MODE="GET_NODES"
+    shift # past argument
     ;;
-  w)
+  --worker)
     JOIN_AS_WORKER="true"
+    shift # past argument
     ;;
-  \?)
-    echo "Invalid option -$OPTARG" >&2
+  *)
+    echo "Invalid option $1" >&2
+    exit 1
     ;;
   esac
 done
