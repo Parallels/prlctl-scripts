@@ -14,6 +14,10 @@ This folder contains bash scripts that can be used to automate the process of se
 
 ## Scripts
 
+### `change-vms-settings`
+
+This will go through all the VMs the current user has registered and apply specified settings or actions.
+
 ### `get-license`
 
 This will return what type of license you are using with PD
