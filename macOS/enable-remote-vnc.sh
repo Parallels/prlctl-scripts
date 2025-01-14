@@ -34,7 +34,7 @@ sudo ./kickstart -activate
 # Disable sleep
 echo "Disabling sleep"
 sudo systemsetup -setcomputersleep Off
-systemsetup -setcomputersleep Off || true
+sudo systemsetup -setcomputersleep Off || true
 sudo pmset -a standby 0
 
 # Disable disk sleep
