@@ -1,10 +1,9 @@
 #!/bin/bash
 
 ############
-# Get the number of virtual machines from the current user
+# Get the number of Parallels Desktop virtual machines for the current user
 #
-# This script will get the number of virtual machines from the current user in Parallels Desktop
-# and output it to the Jamf Pro Extension Attribute
+# The output is the number.
 #
 ############
 
@@ -32,7 +31,13 @@ function get_license_state() {
 
 get_license_state
 
-user=root
+# Get the currently logged-in user
+user=$(who | awk '($2 ~ /console/) { print $1 }')
+
+# If no console user is found, fall back to $USER
+if [[ -z "$user" ]]; then
+  user=$USER
+fi
 
 user_count=$(sudo -u $user prlctl list -a | grep -oE '\{[a-f0-9\-]+\}' | wc -l | awk '{$1=$1};1')
 
