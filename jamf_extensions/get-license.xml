@@ -1,10 +1,13 @@
 #!/bin/bash
 
 ############
-# Get the license of the Parallels Desktop
+# Get the license of Parallels Desktop
 #
-# This script will get the license of the Parallels Desktop
-# and output it to the Jamf Pro Extension Attribute
+# This script will get the license of Parallels Desktop copy
+# The middle part of a license key is hidden for security reasons.
+# Example: 6J9A5T-******-******-******-RN17ZA
+# However, this should be enough to detect if users in your organizations are using the 
+# same license, or, if you are using sublicense keys, they are activated with a proper group key.
 #
 ############
 
