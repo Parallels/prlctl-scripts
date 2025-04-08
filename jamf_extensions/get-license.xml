@@ -1,1 +1,13 @@
-echo "<result>`prlsrvctl info | awk -F ': ' '/^License/ {print $2}'`</result>"
+#!/bin/bash
+
+license=$(prlsrvctl info | awk -F ': ' '/^License/ {print $2}')
+
+if [[ $license ]]; then
+echo "
+<result>$license</result>"
+else
+echo "
+<result>No License found</result>"
+fi
+
+exit 0

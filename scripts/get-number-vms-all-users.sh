@@ -46,6 +46,12 @@ done
 
 user_count=$(wc -l "$temp_file" | awk '{$1=$1};1' | cut -d' ' -f1)
 
-rm "$temp_file"  # Cleanup the temporary file
+rm "$temp_file" # Cleanup the temporary file
 
-echo "$user_count"
+if [[ $user_count ]]; then
+  echo "$user_count"
+else
+  echo "No VMs found"
+fi
+
+exit 0

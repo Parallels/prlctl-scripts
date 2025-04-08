@@ -57,3 +57,10 @@ Once it is installed it will run in the background and it will suspend all runni
 ```bash
 ./suspend-machines-on-close-lid -u
 ```
+
+### `restrict-operations-add-create-clone`
+
+This script will restrict the operations that can be performed on the VMs.
+
+```bash
+./restrict-operations-add-create-clone
