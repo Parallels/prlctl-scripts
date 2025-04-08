@@ -3,13 +3,14 @@
 ############
 # Restrict operations on Parallels Desktop
 #
-# This script will restrict operations on Parallels Desktop
-# and output it to the Jamf Pro Extension Attribute
+# This script will restrict operations on Parallels Desktop by requiring Mac admin password
+# to create or register a new virtual machine
 #
-# the user will need to enter their password to perform the operations
-# - add vm
-# - create vm
-# - clone vm
+#
+# This is a legacy and deprecated functionality. In order to limit what users can do with Parallels
+# Desktop, please use Parallels Desktop Enterprise Edition and Management Portal.
+# Enterprise Edition offers better security and user experience from both admin and end user sides.
+#
 ############
 
 function get_license_state() {
