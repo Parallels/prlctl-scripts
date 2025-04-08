@@ -1,14 +1,44 @@
 #!/bin/bash
 
+############
+# Get the machines of the current user
+#
+# This script will get the virtual machines for the current user in Parallels Desktop
+# and output it to the Jamf Pro Extension Attribute
+#
+############
+
+function get_license_state() {
+  is_installed=$(which prlsrvctl)
+  if [[ $is_installed ]]; then
+    license_output=$(prlsrvctl info | grep "License:")
+
+    if [[ -n "$license_output" ]]; then
+      license_state=$(echo "$license_output" | awk -F "state='" '{print $2}' | awk -F "'" '{print $1}')
+
+      if [[ "$license_state" != "valid" ]]; then
+        echo "Invalid License"
+        exit 1
+      fi
+    else
+      echo "No License found"
+      exit 1
+    fi
+  else
+    echo "Parallels is not installed"
+    exit 1
+  fi
+}
+
+get_license_state
+
 user=root
 
 lines=$(sudo -u $user prlctl list -a | awk -v my_status="" '$2 ~ my_status { $1=$2=$3=""; gsub(/^
 */, ""); print }' | tr '\n' ',' | sed 's/,$//')
 
 if [[ $lines ]]; then
-echo "
-<result>$lines</result>"
+  echo "<result>$lines</result>"
 else
-echo "
-<result>No Machines found</result>"
+  echo "<result>No Machines found</result>"
 fi

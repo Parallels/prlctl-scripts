@@ -1,16 +1,46 @@
 #!/bin/bash
 
+############
+# Get the stopped virtual machines from the current user
+#
+# This script will get the stopped virtual machines from the current user in Parallels Desktop
+# and output it to the Jamf Pro Extension Attribute
+#
+############
+
+function get_license_state() {
+  is_installed=$(which prlsrvctl)
+  if [[ $is_installed ]]; then
+    license_output=$(prlsrvctl info | grep "License:")
+
+    if [[ -n "$license_output" ]]; then
+      license_state=$(echo "$license_output" | awk -F "state='" '{print $2}' | awk -F "'" '{print $1}')
+
+      if [[ "$license_state" != "valid" ]]; then
+        echo "<result>Invalid License</result>"
+        exit 1
+      fi
+    else
+      echo "<result>No License found</result>"
+      exit 1
+    fi
+  else
+    echo "<result>Parallels is not installed</result>"
+    exit 1
+  fi
+}
+
+get_license_state
+
 user=root
 
 lines=$(sudo -u $user prlctl list -a | awk -v my_status="stopped" '$2 ~ my_status { $1=$2=$3="";
 gsub(/^ */, ""); print }' | tr '\n' ',' | sed 's/,$//')
 
 if [[ $lines ]]; then
-echo "
-<result>$lines</result>"
+  echo "<result>$lines</result>"
 else
-echo "
-<result>No stopped machines found</result>"
+  echo "<result>No stopped machines found</result>"
 fi
 
 exit 0

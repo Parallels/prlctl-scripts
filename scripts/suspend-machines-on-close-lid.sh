@@ -1,4 +1,12 @@
 #!/bin/bash
+
+############
+# Suspend machines on close lid
+#
+# This script will suspend machines on close lid
+#
+############
+
 OPS="RUN"
 while [[ $# -gt 0 ]]; do
   key="$1"
@@ -85,7 +93,7 @@ suspend() {
 }
 
 uninstall() {
- echo "Uninstalling Service on $1"
+  echo "Uninstalling Service on $1"
 
   launchctl unload /Library/LaunchDaemons/com.parallels.suspend-machines-on-close-lid.plist
   rm /Library/LaunchDaemons/com.parallels.suspend-machines-on-close-lid.plist
@@ -93,8 +101,8 @@ uninstall() {
 }
 
 install() {
- echo "Installing Service on $1"
- echo "<?xml version="1.0" encoding="UTF-8"?>
+  echo "Installing Service on $1"
+  echo "<?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
@@ -113,8 +121,8 @@ install() {
   <key>StandardOutPath</key>
   <string>/tmp/suspend-machines-on-close-lid.job.out</string> 
 </dict>
-</plist>" > /Library/LaunchDaemons/com.parallels.suspend-machines-on-close-lid.plist
-  
+</plist>" >/Library/LaunchDaemons/com.parallels.suspend-machines-on-close-lid.plist
+
   chown root:wheel /Library/LaunchDaemons/com.parallels.suspend-machines-on-close-lid.plist
   chmod 644 /Library/LaunchDaemons/com.parallels.suspend-machines-on-close-lid.plist
 
@@ -150,10 +158,33 @@ run() {
   done
 }
 
+function get_license_state() {
+  is_installed=$(which prlsrvctl)
+  if [[ $is_installed ]]; then
+    license_output=$(prlsrvctl info | grep "License:")
+
+    if [[ -n "$license_output" ]]; then
+      license_state=$(echo "$license_output" | awk -F "state='" '{print $2}' | awk -F "'" '{print $1}')
+
+      if [[ "$license_state" != "valid" ]]; then
+        echo "Invalid License"
+        exit 1
+      fi
+    else
+      echo "No License found"
+      exit 1
+    fi
+  else
+    echo "Parallels is not installed"
+    exit 1
+  fi
+}
+
 if [ "$OPS" == "INSTALL" ]; then
-  install "/Users/cjlapao/code/parallels/prlctl-scripts/scripts"
+  install
 elif [ "$OPS" == "UNINSTALL" ]; then
   uninstall
 else
+  get_license_state
   run
 fi

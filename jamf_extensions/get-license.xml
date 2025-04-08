@@ -1,13 +1,33 @@
 #!/bin/bash
 
-license=$(prlsrvctl info | awk -F ': ' '/^License/ {print $2}')
+############
+# Get the license of the Parallels Desktop
+#
+# This script will get the license of the Parallels Desktop
+# and output it to the Jamf Pro Extension Attribute
+#
+############
 
-if [[ $license ]]; then
-echo "
-<result>$license</result>"
+is_installed=$(which prlsrvctl)
+
+if [[ $is_installed ]]; then
+  license_output=$(prlsrvctl info | grep "License:")
+
+  if [[ -n "$license_output" ]]; then
+    license_state=$(echo "$license_output" | awk -F "state='" '{print $2}' | awk -F "'" '{print $1}')
+    license_key=$(echo "$license_output" | awk -F "key='" '{print $2}' | awk -F "'" '{print $1}')
+
+    if [[ "$license_state" == "valid" ]]; then
+      echo "<result>$license_key</result>"
+    else
+      echo "<result>Invalid License</result>"
+    fi
+  else
+    echo "<result>No License found</result>"
+  fi
 else
-echo "
-<result>No License found</result>"
+  echo "<result>Parallels is not installed</result>"
+  exit 1
 fi
 
 exit 0

@@ -1,11 +1,65 @@
 #!/bin/bash
 
+############
+# Get all stopped virtual machines from all users
+#
+# This script will get all stopped virtual machines from all users
+#
+# You can use the following options:
+# -f | --format: Format the output
+#
+# Example:
+# ./get-stopped-machines.sh -f csv
+#
+# This will get all stopped machines and format the output as a csv
+############
+
 STATUS="stopped"
 FORMAT=""
+
+while [[ $# -gt 0 ]]; do
+  key="$1"
+
+  case $key in
+  -f | --format)
+    FORMAT="$2"
+    shift # move past argument
+    shift # move past value
+    ;;
+  *)
+    # unknown option
+    shift # move past argument
+    ;;
+  esac
+done
 
 get_host_users() {
   dscl . list /Users | grep -v "^_" | grep '\S'
 }
+
+function get_license_state() {
+  is_installed=$(which prlsrvctl)
+  if [[ $is_installed ]]; then
+    license_output=$(prlsrvctl info | grep "License:")
+
+    if [[ -n "$license_output" ]]; then
+      license_state=$(echo "$license_output" | awk -F "state='" '{print $2}' | awk -F "'" '{print $1}')
+
+      if [[ "$license_state" != "valid" ]]; then
+        echo "Invalid License"
+        exit 1
+      fi
+    else
+      echo "No License found"
+      exit 1
+    fi
+  else
+    echo "Parallels is not installed"
+    exit 1
+  fi
+}
+
+get_license_state
 
 lines=""
 
@@ -40,7 +94,12 @@ for user in $(get_host_users); do
   fi
 done
 
-lines=$(cat "$temp_names" | tr '\n' ',' | sed 's/,$//')
+if [ "$FORMAT" = "csv" ]; then
+  lines=$(cat "$temp_names" | tr '\n' ',' | sed 's/,$//')
+else
+  lines=$(cat "$temp_names")
+fi
+
 rm "$temp_file"  # Cleanup the temporary file
 rm "$temp_names" # Cleanup the temporary file
 

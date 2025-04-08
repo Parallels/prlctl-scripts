@@ -1,14 +1,47 @@
 #!/bin/bash
 
-prlsrvctl set --require-pwd add-vm:on && prlcrvctl set --require-pwd create-vm:on && prlcrvctl set
---require-pwd clone-vm:on
+############
+# Restrict operations on Parallels Desktop
+#
+# This script will restrict operations on Parallels Desktop
+# and output it to the Jamf Pro Extension Attribute
+#
+# the user will need to enter their password to perform the operations
+# - add vm
+# - create vm
+# - clone vm
+############
+
+function get_license_state() {
+  is_installed=$(which prlsrvctl)
+  if [[ $is_installed ]]; then
+    license_output=$(prlsrvctl info | grep "License:")
+
+    if [[ -n "$license_output" ]]; then
+      license_state=$(echo "$license_output" | awk -F "state='" '{print $2}' | awk -F "'" '{print $1}')
+
+      if [[ "$license_state" != "valid" ]]; then
+        echo "<result>Invalid License</result>"
+        exit 1
+      fi
+    else
+      echo "<result>No License found</result>"
+      exit 1
+    fi
+  else
+    echo "<result>Parallels is not installed</result>"
+    exit 1
+  fi
+}
+
+get_license_state
+
+prlsrvctl set --require-pwd add-vm:on && prlcrvctl set --require-pwd create-vm:on && prlcrvctl set --require-pwd clone-vm:on
 
 if [[ $? -eq 0 ]]; then
-echo "
-<result>Success</result>"
+  echo "<result>Success</result>"
 else
-echo "
-<result>Failed</result>"
+  echo "<result>Failed</result>"
 fi
 
 exit 0

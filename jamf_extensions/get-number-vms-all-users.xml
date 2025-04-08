@@ -1,21 +1,55 @@
+#!/bin/bash
+
+############
+# Get the number of virtual machines from all users
+#
+# This script will get the number of virtual machines from all users in Parallels Desktop
+# and output it to the Jamf Pro Extension Attribute
+#
+############
+
+function get_license_state() {
+  is_installed=$(which prlsrvctl)
+  if [[ $is_installed ]]; then
+    license_output=$(prlsrvctl info | grep "License:")
+
+    if [[ -n "$license_output" ]]; then
+      license_state=$(echo "$license_output" | awk -F "state='" '{print $2}' | awk -F "'" '{print $1}')
+
+      if [[ "$license_state" != "valid" ]]; then
+        echo "Invalid License"
+        exit 1
+      fi
+    else
+      echo "No License found"
+      exit 1
+    fi
+  else
+    echo "Parallels is not installed"
+    exit 1
+  fi
+}
+
+get_license_state
+
 get_host_users() {
-dscl . list /Users | grep -v "^_" | grep '\S'
+  dscl . list /Users | grep -v "^_" | grep '\S'
 }
 
 # Create an empty temporary file
 temp_file=$(mktemp /tmp/uuids.XXXXXX)
 for user in $(get_host_users); do
-[ -n "${user}" ] && [ -e "/Users/${user}" ] || continue
+  [ -n "${user}" ] && [ -e "/Users/${user}" ] || continue
 
-input_data=$(sudo -u $user prlctl list -a)
+  input_data=$(sudo -u $user prlctl list -a)
 
-echo "$input_data" | awk '{gsub(/[{}]/, "", $1); print $1}' | while read uuid; do
-if ! grep -q "$uuid" "$temp_file"; then
-if [ "$uuid" != "UUID" ]; then
-echo "$uuid" >>"$temp_file"
-fi
-fi
-done
+  echo "$input_data" | awk '{gsub(/[{}]/, "", $1); print $1}' | while read uuid; do
+    if ! grep -q "$uuid" "$temp_file"; then
+      if [ "$uuid" != "UUID" ]; then
+        echo "$uuid" >>"$temp_file"
+      fi
+    fi
+  done
 done
 
 user_count=$(wc -l "$temp_file" | awk '{$1=$1};1' | cut -d' ' -f1)
@@ -23,11 +57,9 @@ user_count=$(wc -l "$temp_file" | awk '{$1=$1};1' | cut -d' ' -f1)
 rm "$temp_file" # Cleanup the temporary file
 
 if [[ $user_count ]]; then
-echo "
-<result>$user_count</result>"
+  echo "<result>$user_count</result>"
 else
-echo "
-<result>No VMs found</result>"
+  echo "<result>No VMs found</result>"
 fi
 
 exit 0

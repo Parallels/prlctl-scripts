@@ -1,5 +1,19 @@
 #!/bin/bash
 
+############
+# Get all machines from all users
+#
+# This script will get all virtual machines from all users in the system
+# You will be able to filter the machines by status and format the output
+#
+# You can use the following options:
+# -s | --status: Filter the machines by status
+# -f | --format: Format the output
+#
+# Example:
+# ./get-machines-all-users.sh -s running -f csv
+############
+
 STATUS=""
 FORMAT=""
 
@@ -27,6 +41,30 @@ done
 get_host_users() {
   dscl . list /Users | grep -v "^_" | grep '\S'
 }
+
+function get_license_state() {
+  is_installed=$(which prlsrvctl)
+  if [[ $is_installed ]]; then
+    license_output=$(prlsrvctl info | grep "License:")
+
+    if [[ -n "$license_output" ]]; then
+      license_state=$(echo "$license_output" | awk -F "state='" '{print $2}' | awk -F "'" '{print $1}')
+
+      if [[ "$license_state" != "valid" ]]; then
+        echo "Invalid License"
+        exit 1
+      fi
+    else
+      echo "No License found"
+      exit 1
+    fi
+  else
+    echo "Parallels is not installed"
+    exit 1
+  fi
+}
+
+get_license_state
 
 lines=""
 
@@ -57,7 +95,12 @@ for user in $(get_host_users); do
   done
 done
 
-lines=$(cat "$temp_names" | tr '\n' ',' | sed 's/,$//')
+if [ "$FORMAT" = "csv" ]; then
+  lines=$(cat "$temp_names" | tr '\n' ',' | sed 's/,$//')
+else
+  lines=$(cat "$temp_names")
+fi
+
 rm "$temp_file"  # Cleanup the temporary file
 rm "$temp_names" # Cleanup the temporary file
 

@@ -1,16 +1,46 @@
 #!/bin/bash
 
+############
+# Get the version of Parallels Desktop
+#
+# This script will get the version of Parallels Desktop
+# and output it to the Jamf Pro Extension Attribute
+#
+############
+
+function get_license_state() {
+  is_installed=$(which prlsrvctl)
+  if [[ $is_installed ]]; then
+    license_output=$(prlsrvctl info | grep "License:")
+
+    if [[ -n "$license_output" ]]; then
+      license_state=$(echo "$license_output" | awk -F "state='" '{print $2}' | awk -F "'" '{print $1}')
+
+      if [[ "$license_state" != "valid" ]]; then
+        echo "<result>Invalid License</result>"
+        exit 1
+      fi
+    else
+      echo "<result>No License found</result>"
+      exit 1
+    fi
+  else
+    echo "<result>Parallels is not installed</result>"
+    exit 1
+  fi
+}
+
+get_license_state
+
 info=$(prlsrvctl info | awk -F ': ' '/^Version/ {print $2}')
 
 if [[ $info ]]; then
-##if info is present, return that
-echo "
-<result>$info</result>"
+  ##if info is present, return that
+  echo "<result>$info</result>"
 
 else
-##if no info is present, return "Not Installed"
-echo "
-<result>Not Installed</result>"
+  ##if no info is present, return "Not Installed"
+  echo "<result>Not Installed</result>"
 fi
 
 exit 0
