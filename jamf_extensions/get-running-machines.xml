@@ -1,10 +1,10 @@
 #!/bin/bash
 
 ############
-# Get the running virtual machines from the current user
+# Get the running Parallels Desktop virtual machines from the current user
 #
-# This script will get the running virtual machines from the current user in Parallels Desktop
-# and output it to the Jamf Pro Extension Attribute
+# Note that this is a snapshot in time of Jamf collecting the extended attributes.
+# If the user is using virtual machines at other times, they are not shown.
 #
 ############
 
@@ -32,7 +32,13 @@ function get_license_state() {
 
 get_license_state
 
-user=root
+# Get the currently logged-in user
+user=$(who | awk '($2 ~ /console/) { print $1 }')
+
+# If no console user is found, fall back to $USER
+if [[ -z "$user" ]]; then
+  user=$USER
+fi
 
 lines=$(sudo -u $user prlctl list -a | awk -v my_status="running" '$2 ~ my_status { $1=$2=$3="";
 gsub(/^ */, ""); print }' | tr '\n' ',' | sed 's/,$//')
