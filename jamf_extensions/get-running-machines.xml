@@ -4,7 +4,7 @@
 # Get the running Parallels Desktop virtual machines from the current user
 #
 # Note that this is a snapshot in time of Jamf collecting the extended attributes.
-# If the user is using virtual machines at other times, they are not shown.
+# If the user has been using virtual machines at other times, they are not shown.
 #
 ############
 
