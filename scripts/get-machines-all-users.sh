@@ -61,4 +61,10 @@ lines=$(cat "$temp_names" | tr '\n' ',' | sed 's/,$//')
 rm "$temp_file"  # Cleanup the temporary file
 rm "$temp_names" # Cleanup the temporary file
 
-echo "$lines"
+if [[ $lines ]]; then
+  echo "$lines"
+else
+  echo "No Machines found"
+fi
+
+exit 0

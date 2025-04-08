@@ -4,11 +4,9 @@ prlsrvctl set --require-pwd add-vm:on && prlcrvctl set --require-pwd create-vm:o
 --require-pwd clone-vm:on
 
 if [[ $? -eq 0 ]]; then
-echo "
-<result>Success</result>"
+  echo "Success"
 else
-echo "
-<result>Failed</result>"
+  echo "Failed"
 fi
 
 exit 0

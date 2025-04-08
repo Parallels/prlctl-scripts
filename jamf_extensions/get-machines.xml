@@ -1,2 +1,14 @@
+#!/bin/bash
+
 user=root
-echo "<result>`sudo -u $user prlctl list -a | awk -v my_status="" '$2 ~ my_status { $1=$2=$3=""; gsub(/^ */, ""); print }' | tr '\n' ',' | sed 's/,$//'`</result>"
+
+lines=$(sudo -u $user prlctl list -a | awk -v my_status="" '$2 ~ my_status { $1=$2=$3=""; gsub(/^
+*/, ""); print }' | tr '\n' ',' | sed 's/,$//')
+
+if [[ $lines ]]; then
+echo "
+<result>$lines</result>"
+else
+echo "
+<result>No Machines found</result>"
+fi

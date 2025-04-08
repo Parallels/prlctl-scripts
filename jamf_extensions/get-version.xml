@@ -1,1 +1,16 @@
-echo "<result>`prlsrvctl info | awk -F ': ' '/^Version/ {print $2}'`</result>"
+#!/bin/bash
+
+info=$(prlsrvctl info | awk -F ': ' '/^Version/ {print $2}')
+
+if [[ $info ]]; then
+##if info is present, return that
+echo "
+<result>$info</result>"
+
+else
+##if no info is present, return "Not Installed"
+echo "
+<result>Not Installed</result>"
+fi
+
+exit 0

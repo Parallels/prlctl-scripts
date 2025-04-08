@@ -31,7 +31,7 @@ for user in $(get_host_users); do
         if [ "$uuid" != "UUID" ]; then
           echo "$uuid" >>"$temp_file"
           machineName=$(echo "$input_data" | awk -v filter="$uuid" '$1 ~ filter { $1=$2=$3=""; gsub(/^ */, ""); print }')
-          if [ "$machineName" != "" ] && [ "$machineName" != NAME* ]; then
+          if [[ "$machineName" != "" ]] && [[ "$machineName" != NAME* ]]; then
             echo "$machineName" >>"$temp_names"
           fi
         fi
@@ -39,10 +39,15 @@ for user in $(get_host_users); do
     done
   fi
 done
-done
 
 lines=$(cat "$temp_names" | tr '\n' ',' | sed 's/,$//')
 rm "$temp_file"  # Cleanup the temporary file
 rm "$temp_names" # Cleanup the temporary file
 
-echo "$lines"
+if [[ $lines ]]; then
+  echo "$lines"
+else
+  echo "No suspended machines found"
+fi
+
+exit 0

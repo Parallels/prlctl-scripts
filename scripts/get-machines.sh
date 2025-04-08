@@ -4,32 +4,36 @@ STATUS=""
 FORMAT=""
 
 while [[ $# -gt 0 ]]; do
-    key="$1"
+  key="$1"
 
-    case $key in
-        -s|--status)
-        STATUS="$2"
-        shift # move past argument
-        shift # move past value
-        ;;
-        -f|--format)
-        FORMAT="$2"
-        shift # move past argument
-        shift # move past value
-        ;;
-        *)
-        # unknown option
-        shift # move past argument
-        ;;
-    esac
+  case $key in
+  -s | --status)
+    STATUS="$2"
+    shift # move past argument
+    shift # move past value
+    ;;
+  -f | --format)
+    FORMAT="$2"
+    shift # move past argument
+    shift # move past value
+    ;;
+  *)
+    # unknown option
+    shift # move past argument
+    ;;
+  esac
 done
 
-
 if [ "$FORMAT" = "csv" ]; then
-      /usr/local/bin/prlctl list -a | awk -v my_status="$STATUS" '$2 ~ my_status { $1=$2=$3=""; gsub(/^ */, ""); print }' | tr '\n' ',' | sed 's/,$//'
+  /usr/local/bin/prlctl list -a | awk -v my_status="$STATUS" '$2 ~ my_status { $1=$2=$3=""; gsub(/^ */, ""); print }' | tr '\n' ',' | sed 's/,$//'
 else
   /usr/local/bin/prlctl list -a | awk -v my_status="$STATUS" '$2 ~ my_status { $1=$2=$3=""; gsub(/^ */, ""); print }'
 fi
 
+if [[ $lines ]]; then
+  echo "$lines"
+else
+  echo "No Machines found"
+fi
 
 exit 0
