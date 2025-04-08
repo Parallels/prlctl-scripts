@@ -4,7 +4,7 @@
 # Get the number of virtual machines from all users
 #
 # This script will get the number of virtual machines from all users in Parallels Desktop
-# and output it to the Jamf Pro Extension Attribute
+# Output is a single number.
 #
 ############
 
@@ -36,30 +36,42 @@ get_host_users() {
   dscl . list /Users | grep -v "^_" | grep '\S'
 }
 
-# Create an empty temporary file
+# Create temporary file for UUIDs
 temp_file=$(mktemp /tmp/uuids.XXXXXX)
+
 for user in $(get_host_users); do
   [ -n "${user}" ] && [ -e "/Users/${user}" ] || continue
 
   input_data=$(sudo -u $user prlctl list -a)
 
-  echo "$input_data" | awk '{gsub(/[{}]/, "", $1); print $1}' | while read uuid; do
+  # Process the prlctl output line by line to extract UUID only
+  echo "$input_data" | awk 'NR>1 {
+    uuid=$1
+    gsub(/[{}]/, "", uuid)
+    print uuid
+  }' | while read -r uuid; do
+    # Skip header line or empty UUIDs
+    if [[ -z "$uuid" || "$uuid" == "UUID" ]]; then
+      continue
+    fi
+    
+    # Only add UUID if we haven't seen it before
     if ! grep -q "$uuid" "$temp_file"; then
-      if [ "$uuid" != "UUID" ]; then
-        echo "$uuid" >>"$temp_file"
-      fi
+      echo "$uuid" >> "$temp_file"
     fi
   done
 done
 
+# Count unique VMs
 user_count=$(wc -l "$temp_file" | awk '{$1=$1};1' | cut -d' ' -f1)
 
-rm "$temp_file" # Cleanup the temporary file
+# Cleanup the temporary file
+rm "$temp_file"
 
-if [[ $user_count ]]; then
+if [[ $user_count -gt 0 ]]; then
   echo "<result>$user_count</result>"
 else
-  echo "<result>No VMs found</result>"
+  echo "<result>0</result>"
 fi
 
 exit 0
