@@ -19,7 +19,7 @@ if [[ $is_installed ]]; then
     if [[ "$license_state" == "valid" ]]; then
       echo "$license_key"
     else
-      echo "Invalid License"
+      echo "$license_state"
     fi
   else
     echo "No License found"
