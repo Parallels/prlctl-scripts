@@ -1,10 +1,12 @@
 #!/bin/bash
 
 ############
-# Get the edition of the Parallels Server
+# Get the Edition of Parallels Desktop
 #
-# This script will get the edition of the Parallels Server
-# and output it to the Jamf Pro Extension Attribute
+# Editions can be "standard", "pro", "business" and "enterprise"
+# This script can help you find and consolidate licenses under a single IT-managed license
+# Standard and Pro Edition are for individuals, while Business and Enterprise enable centralized
+# management of these licenses and more.
 #
 ############
 
