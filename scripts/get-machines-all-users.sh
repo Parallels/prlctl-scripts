@@ -51,7 +51,7 @@ function get_license_state() {
       license_state=$(echo "$license_output" | awk -F "state='" '{print $2}' | awk -F "'" '{print $1}')
 
       if [[ "$license_state" != "valid" ]]; then
-        echo "Invalid License"
+        echo "$license_state"
         exit 1
       fi
     else
