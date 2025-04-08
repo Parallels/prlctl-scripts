@@ -4,8 +4,7 @@
 # Get the version of Parallels Desktop
 #
 # This script will get the version of Parallels Desktop
-# and output it to the Jamf Pro Extension Attribute
-#
+# Example output: Desktop 20.2.2-55879
 ############
 
 function get_license_state() {
