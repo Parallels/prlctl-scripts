@@ -1,10 +1,10 @@
 #!/bin/bash
 
 ############
-# Get the machines of all users
+# Get Parallels virtual machines from all users
 #
-# This script will get the virtual machines for all users in Parallels Desktop
-# and output it to the Jamf Pro Extension Attribute
+# This script will get the virtual machines for all users in Parallels Desktop.
+# The example of output: Windows 11, Ubuntu Linux, macOS Sequoia
 #
 ############
 
@@ -58,7 +58,7 @@ for user in $(get_host_users); do
   done
 done
 
-lines=$(cat "$temp_names" | tr '\n' ',' | sed 's/,$//')
+lines=$(cat "$temp_names" | paste -s -d "," - | sed 's/,/, /g' | sed 's/, $//')
 rm "$temp_file"  # Cleanup the temporary file
 rm "$temp_names" # Cleanup the temporary file
 
