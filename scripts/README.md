@@ -64,3 +64,20 @@ This script will restrict the operations that can be performed on the VMs.
 
 ```bash
 ./restrict-operations-add-create-clone
+```
+
+### `windows_vms_update.sh`
+
+This script will check for updates for all the Windows VMs and install them.
+
+```bash
+./windows_vms_update.sh --help
+```
+
+this will show the help menu, the options are:
+
+- `list-updates`: list the updates for all the Windows VMs
+- `install`: install the updates for all the Windows VMs
+- `check`: check if there are updates for all the Windows VMs
+- `uninstall`: uninstall the updates for all the Windows VMs
+- `check-and-install`: check and install the updates for all the Windows VMs
