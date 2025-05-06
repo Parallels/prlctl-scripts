@@ -11,122 +11,31 @@
 # - jq
 # - osascript
 #
+# Parameters:
+# $4: Mode (check, list-updates, install, uninstall, check-and-install)
+# $5: Unattended (optional) = true or false
+# $6: Auto Reboot (optional) = true or false
 
-MODE=""
-OUTPUT_TO_FILE="false"
-HAS_UPDATES="false"
+MODE="$4"
 AUTO_REBOOT="false"
 USER_PROMPT="true"
 VERBOSE="false"
 OUTPUT_FILE=""
 TARGET_VM_ID=""
+USER=""
+USER_ID=""
 TARGET_VM_IDS=()
 KB=""
 
-function show_help() {
-  local mode=$1
+# check if the unattended parameter is true
+if [ "$5" = "true" ]; then
+  USER_PROMPT="false"
+fi
 
-  if [ -z "$mode" ]; then
-    echo "Parallels Desktop Windows VM Update Management Script"
-    echo "Usage: $0 [MODE] [OPTIONS]"
-    echo
-    echo "Modes:"
-    echo "  list-updates       List available updates for Windows VMs"
-    echo "  install            Install updates for specified VMs"
-    echo "  uninstall          Uninstall specific updates (requires --kb)"
-    echo "  check              Check for available updates"
-    echo "  check-and-install  Check for and install available updates"
-    echo
-    echo "Options:"
-    echo "  --vm-id ID          Target a specific VM by ID"
-    echo "  --vm-ids ID1,ID2    Target multiple VMs by comma-separated IDs"
-    echo "  --kb KB_NUMBER      Specify a KB number for install/uninstall"
-    echo "  --auto-reboot       Enable automatic reboot after updates"
-    echo "  --unattended        Run without user prompts"
-    echo "  -f, --to-file FILE  Save output to specified file"
-    echo "  -v, --verbose       Enable verbose output"
-    echo "  -h, --help          Show this help message"
-    echo
-  fi
-
-  if [ -n "$mode" ]; then
-    echo "Parallels Desktop Windows VM Update Management Script - $mode Mode"
-    echo
-    case "$mode" in
-    "list-updates")
-      echo "Usage: $0 list-updates [OPTIONS]"
-      echo
-      echo "Description:"
-      echo "  Lists all available updates for Windows VMs, including Windows Security Updates"
-      echo "  and Parallels Desktop Guest Tools status."
-      echo
-      echo "Options:"
-      echo "  --vm-id ID          Target a specific VM by ID"
-      echo "  --vm-ids ID1,ID2    Target multiple VMs by comma-separated IDs"
-      echo "  -f, --to-file FILE  Save output to specified file"
-      echo "  -v, --verbose       Show detailed update information"
-      echo "  -h, --help          Show this help message"
-      ;;
-    "install")
-      echo "Usage: $0 install [OPTIONS]"
-      echo
-      echo "Description:"
-      echo "  Installs available updates for specified VMs, including Windows updates and"
-      echo "  Parallels Desktop Guest Tools if outdated."
-      echo
-      echo "Options:"
-      echo "  --vm-id ID          Target a specific VM by ID"
-      echo "  --vm-ids ID1,ID2    Target multiple VMs by comma-separated IDs"
-      echo "  --kb KB_NUMBER      Install specific KB update (optional)"
-      echo "  --auto-reboot       Enable automatic reboot after updates"
-      echo "  --unattended        Run without user prompts"
-      echo "  -v, --verbose       Show detailed installation progress"
-      echo "  -h, --help          Show this help message"
-      ;;
-    "uninstall")
-      echo "Usage: $0 uninstall --kb KB_NUMBER [OPTIONS]"
-      echo
-      echo "Description:"
-      echo "  Uninstalls specific updates from Windows VMs."
-      echo
-      echo "Options:"
-      echo "  --kb KB_NUMBER      (Required) Specify which update to remove"
-      echo "  --vm-id ID          Target a specific VM by ID"
-      echo "  --vm-ids ID1,ID2    Target multiple VMs by comma-separated IDs"
-      echo "  -v, --verbose       Show detailed uninstallation progress"
-      echo "  -h, --help          Show this help message"
-      ;;
-    "check")
-      echo "Usage: $0 check [OPTIONS]"
-      echo
-      echo "Description:"
-      echo "  Checks for available updates without installing them."
-      echo
-      echo "Options:"
-      echo "  --vm-id ID          Target a specific VM by ID"
-      echo "  --vm-ids ID1,ID2    Target multiple VMs by comma-separated IDs"
-      echo "  -f, --to-file FILE  Save output to specified file"
-      echo "  -v, --verbose       Show detailed update information"
-      echo "  -h, --help          Show this help message"
-      ;;
-    "check-and-install")
-      echo "Usage: $0 check-and-install [OPTIONS]"
-      echo
-      echo "Description:"
-      echo "  Checks for available updates and prompts to install them."
-      echo
-      echo "Options:"
-      echo "  --vm-id ID          Target a specific VM by ID"
-      echo "  --vm-ids ID1,ID2    Target multiple VMs by comma-separated IDs"
-      echo "  --auto-reboot       Enable automatic reboot after updates"
-      echo "  --unattended        Run without user prompts"
-      echo "  -v, --verbose       Show detailed update and installation progress"
-      echo "  -h, --help          Show this help message"
-      ;;
-    esac
-    echo
-  fi
-}
+# check if the auto reboot parameter is true
+if [ "$6" = "true" ]; then
+  AUTO_REBOOT="true"
+fi
 
 function check_for_requirements() {
   prlctl_installed=$(which prlctl)
@@ -244,13 +153,15 @@ function add_vm_updates() {
   local updates=$3
   local tools_state=$4
 
+  has_updates=$(echo "$updates" | /tmp/jq 'length > 0')
   # Create a JSON object for this VM with its updates
   vm_updates=$(/tmp/jq -n \
     --arg name "$vm_name" \
     --arg id "$vm_id" \
     --arg tools_state "$tools_state" \
+    --arg has_updates "$has_updates" \
     --argjson updates "$updates" \
-    '{name: $name, id: $id, guest_tools: $tools_state, updates: $updates}')
+    '{name: $name, id: $id, guest_tools: $tools_state, updates: $updates, has_updates: $has_updates}')
 
   # Add to our array of all updates
   ALL_UPDATES+=("$vm_updates")
@@ -525,7 +436,7 @@ function check_and_install_updates() {
         # Add this VM to the list of VMs that need updates
         if [ "$USER_PROMPT" = "true" ]; then
           response=$(
-            sudo -u $USER osascript <<EOF
+            launchctl asuser "$USER_ID" sudo -u "$USER" osascript <<EOF
 try
   display dialog "There are updates available for VM $vm_name.\n$UPDATES_TYPE\n\nDo you want to install them?\n\n⚠️ ATTENTION: the VM might restart during the installation." with title "VM Security Updates" buttons {"Install", "Cancel"} default button "Install"
   return "::Install"
@@ -565,90 +476,20 @@ EOF
   fi
 }
 
-while [[ $# -gt 0 ]]; do
-  key="$1"
-
-  case $key in
-  -h | --help)
-    show_help "$MODE"
-    exit 0
-    ;;
-  list-updates)
-    MODE="list-updates"
-    shift
-    ;;
-  install)
-    MODE="install"
-    shift
-    ;;
-  check)
-    MODE="check"
-    shift
-    ;;
-  uninstall)
-    MODE="uninstall"
-    shift
-    ;;
-  check-and-install)
-    MODE="check-and-install"
-    shift
-    ;;
-  -f | --to-file)
-    OUTPUT_TO_FILE="true"
-    VERBOSE="false"
-    OUTPUT_FILE="$2"
-    shift
-    shift
-    ;;
-  -v | --verbose)
-    VERBOSE="true"
-    shift
-    ;;
-  --vm-id)
-    TARGET_VM_ID="$2"
-    shift
-    shift
-    ;;
-  --vm-ids)
-    IFS=',' read -ra TARGET_VM_IDS <<<"$2"
-    shift
-    shift
-    ;;
-  --kb)
-    KB="$2"
-    shift
-    shift
-    ;;
-  --auto-reboot)
-    AUTO_REBOOT="true"
-    shift
-    ;;
-  --unattended)
-    USER_PROMPT="false"
-    shift
-    ;;
-  *)
-    echo "Unknown option: $1"
-    echo ""
-    show_help "$MODE"
-    exit 1
-    ;;
-  esac
-done
-
 if [ -z "$MODE" ]; then
   echo "Error: No mode specified"
-  show_help
+  exit 1
+fi
+
+if [ "$MODE" != "check" ] && [ "$MODE" != "list-updates" ] && [ "$MODE" != "install" ] && [ "$MODE" != "uninstall" ] && [ "$MODE" != "check-and-install" ]; then
+  echo "Error: Invalid mode specified"
   exit 1
 fi
 
 USER=$(stat -f%Su /dev/console)
+USER_ID=$(id -u $USER)
 echo "Using logged in user: $USER"
 check_for_requirements
-
-# get_list_of_updates "8ab6fecc-565d-49d2-b1c0-b6de2244cb93"
-
-# exit 0
 
 if [ "$MODE" = "check" ]; then
   check_for_updates
@@ -720,5 +561,8 @@ fi
 
 # Check if any VM has updates available and install them if so
 if [ "$MODE" = "check-and-install" ]; then
-  check_and_install_updates
+  (
+    check_and_install_updates
+  ) &
+  disown
 fi

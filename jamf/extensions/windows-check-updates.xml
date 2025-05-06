@@ -1,0 +1,143 @@
+#!/bin/bash
+
+############
+# Check for updates for all the Windows VMs
+#
+# This script will check for updates for all the Windows VMs
+# and return true or false
+#
+#
+############
+USER=$(stat -f%Su /dev/console)
+function check_for_requirements() {
+  prlctl_installed=$(which prlctl)
+  if [[ -z "$prlctl_installed" ]]; then
+    echo "<result>prlctl is not installed</result>"
+    exit 1
+  fi
+
+  # Check if jq is installed
+  if [[ ! -f "/tmp/jq" ]]; then
+    if [ "$VERBOSE" = "true" ]; then
+      echo "<result>jq is not installed. Installing temporary version...</result>"
+    fi
+
+    curl -Ls -o /tmp/jq https://github.com/jqlang/jq/releases/download/jq-1.7.1/jq-macos-arm64
+    chmod +x /tmp/jq
+    xattr -dr com.apple.quarantine /tmp/jq
+  fi
+}
+
+function list_vms() {
+  VMS=$(sudo -u $USER prlctl list -a -i --json | /tmp/jq -r 'map(select((.OS == "win-10" or .OS == "win-11" or .OS=="ubuntu") and .State == "running") | {id:.ID, name: .Name, tools_state: .GuestTools.state})')
+  echo "$VMS"
+}
+
+function get_list_of_updates() {
+  VM_ID=$1
+
+  # Create a temporary file to store the complete output
+  temp_output_file=$(mktemp)
+
+  # Execute the command and redirect all output to the temporary file
+  sudo -u $USER prlctl exec $VM_ID pwsh -Command "Install-Module PSWindowsUpdate -Force -AllowClobber; Import-Module PSWindowsUpdate; Get-WindowsUpdate | ForEach-Object { \$_ | Select-Object -Property Title,KB,KBArticleIDs,Size,LastDeploymentChangeTime,Status } | ConvertTo-Json -Depth 5" >"$temp_output_file" 2>/dev/null
+
+  last_exit_code=$?
+  if [ $last_exit_code -ne 0 ] && [ $last_exit_code -ne 2 ]; then
+    echo "<result>Error: Failed to get updates for $VM_ID</result>"
+    exit 1
+  fi
+
+  # Read and clean the file content
+  raw_updates=$(cat "$temp_output_file")
+
+  # If the output is empty, set it to an empty array
+  if [ -z "$raw_updates" ]; then
+    raw_updates="[]"
+  fi
+
+  # Clean up the raw updates output
+  raw_updates=$(echo "$raw_updates" | grep -v "WARNING" | grep -v "^$")
+
+  # If the output starts with { (single object) and doesn't end with ], wrap it in array brackets
+  if [[ "$raw_updates" =~ ^\{.*$ ]] && [[ ! "$raw_updates" =~ \]$ ]]; then
+    raw_updates="[$raw_updates]"
+  fi
+
+  # Process the updates with jq and ensure it's an array
+  updates=$(echo "$raw_updates" | /tmp/jq -c -r 'map({title: .Title, kb: .KB, kbArticleIDs: .KBArticleIDs, size: .Size, lastDeploymentChangeTime: .LastDeploymentChangeTime, status: .Status})')
+
+  rm -f "$temp_output_file"
+  echo "$updates"
+}
+
+check_for_requirements
+if [ $? -ne 0 ]; then
+  echo "<result>Error: Failed to check for requirements</result>"
+  exit 1
+fi
+
+VMS=$(list_vms)
+
+if [ ${#VM_ARRAY[@]} -eq 0 ]; then
+  VM_ARRAY=()
+  while IFS= read -r line; do
+    VM_ARRAY+=("$line")
+  done < <(echo "$VMS" | /tmp/jq -c '.[]')
+fi
+
+if [ ${#VM_ARRAY[@]} -eq 0 ]; then
+  echo "<result>No running Windows VMs found</result>"
+  exit 0
+fi
+
+# Initialize an empty JSON array to store all VM update information
+ALL_UPDATES=()
+
+for VM in "${VM_ARRAY[@]}"; do
+  vm_id=$(echo "$VM" | /tmp/jq -r '.id')
+  vm_name=$(echo "$VM" | /tmp/jq -r '.name')
+  tools_state=$(echo "$VM" | /tmp/jq -r '.tools_state')
+
+  updates=$(get_list_of_updates "$vm_id" "$vm_name")
+  last_exit_code=$?
+  if [ $last_exit_code -ne 0 ] && [ $last_exit_code -ne 2 ]; then
+    echo "<result>Error: Failed to get updates for $vm_name ($vm_id)</result>"
+    exit 1
+  fi
+  # Check if updates is an empty array
+  HAS_UPDATES=$(echo "$updates" | /tmp/jq 'length > 0')
+  HAS_TOOLS_UPDATE="false"
+  if [ "$tools_state" = "outdated" ]; then
+    HAS_UPDATES="true"
+    HAS_TOOLS_UPDATE="true"
+  fi
+  if [ "$HAS_UPDATES" = "false" ] && [ "$tools_state" = "outdated" ]; then
+    HAS_UPDATES="true"
+    HAS_TOOLS_UPDATE="true"
+  fi
+
+  # Build a JSON object with name, id, and a boolean indicating if updates are available
+  vm_update_status=$(/tmp/jq -n \
+    --arg name "$vm_name" \
+    --arg id "$vm_id" \
+    --argjson has_updates "$HAS_UPDATES" \
+    --argjson has_tools_update "$HAS_TOOLS_UPDATE" \
+    '{name: $name, id: $id, has_updates: $has_updates, has_tools_update: $has_tools_update}')
+
+  if [ "$VERBOSE" = "true" ]; then
+    if [ "$HAS_UPDATES" = "true" ]; then
+      echo "<result>$vm_name has updates available</result>"
+    else
+      echo "<result>$vm_name has no updates available</result>"
+    fi
+  fi
+  ALL_UPDATES+=("$vm_update_status")
+done
+
+# Process the array and output VM update status in a human-readable format
+
+# LINES=$(printf '%s\n' "${ALL_UPDATES[@]}" | /tmp/jq -s '.[] | "\(.name): \(if .has_updates then "Has Windows Updates" else "Up-to-Date" end)"' | sed 's/^"//;s/"$//' | tr '\n' ',' | sed 's/,$//')
+LINES=$(printf '%s\n' "${ALL_UPDATES[@]}" | /tmp/jq -s '.[] | "\(.name): \(if .has_updates then "Has Windows Updates" else "Up-to-Date" end)"' | sed 's/^"//;s/"$//' | sed 's/,$//')
+
+echo "<result>${LINES[*]}</result>"
