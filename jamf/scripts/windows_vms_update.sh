@@ -32,6 +32,7 @@ FORCE="false"
 USER=""
 USER_ID=""
 TARGET_VM_IDS=()
+DEBUG="false"
 KB=""
 
 # check if the unattended parameter is true
@@ -50,6 +51,10 @@ fi
 
 if [ "$8" = "true" ]; then
   FORCE="true"
+fi
+
+if [ -z "$MODE" ]; then
+  MODE="check-and-install"
 fi
 
 function check_for_requirements() {
@@ -263,7 +268,7 @@ function get_list_of_updates() {
   temp_output_file=$(mktemp)
 
   # Execute the command and redirect all output to the temporary file
-  sudo -u $USER prlctl exec $VM_ID pwsh -Command "Install-Module PSWindowsUpdate -Force -AllowClobber; Import-Module PSWindowsUpdate; Get-WindowsUpdate | ForEach-Object { \$_ | Select-Object -Property Title,KB,KBArticleIDs,Size,LastDeploymentChangeTime,Status } | ConvertTo-Json -Depth 5" >"$temp_output_file" 2>/dev/null
+  sudo -u $USER prlctl exec $VM_ID powershell -Command "Set-ExecutionPolicy -Scope LocalMachine -ExecutionPolicy RemoteSigned -Force; usoClient StartScan; Install-PackageProvider -Name NuGet -MinimumVersion 2.8.5.201 -Force *>\$null; Install-Module PSWindowsUpdate -Force -AllowClobber; Import-Module PSWindowsUpdate; Get-WindowsUpdate | ForEach-Object { \$_ | Select-Object -Property Title,KB,KBArticleIDs,Size,LastDeploymentChangeTime,Status,RebootRequired,IsInstalled } | ConvertTo-Json -Depth 5" >"$temp_output_file" 2>/dev/null
 
   last_exit_code=$?
   if [ $last_exit_code -ne 0 ] && [ $last_exit_code -ne 2 ]; then
@@ -288,7 +293,7 @@ function get_list_of_updates() {
   fi
 
   # Process the updates with jq and ensure it's an array
-  updates=$(echo "$raw_updates" | /tmp/jq -c -r 'map({title: .Title, kb: .KB, kbArticleIDs: .KBArticleIDs, size: .Size, lastDeploymentChangeTime: .LastDeploymentChangeTime, status: .Status})')
+  updates=$(echo "$raw_updates" | /tmp/jq -c -r 'map({title: .Title, kb: .KB, kbArticleIDs: .KBArticleIDs, size: .Size, lastDeploymentChangeTime: .LastDeploymentChangeTime, status: .Status, requires_reboot: .RebootRequired, is_installed: .IsInstalled})')
   rm -f "$temp_output_file"
 
   set_vm_to_previous_state "$VM_ID" "$VM_STATE"
@@ -315,15 +320,15 @@ function install_windows_updates() {
 
   if [ -z "$TARGET_KB" ]; then
     if [ "$AUTO_REBOOT" = "true" ]; then
-      RESULT=$(sudo -u $USER prlctl exec $VM_ID pwsh -Command "Install-Module PSWindowsUpdate -Force -AllowClobber; Import-Module PSWindowsUpdate; Install-WindowsUpdate -AcceptAll -AutoReboot | ConvertTo-Json -Depth 5")
+      RESULT=$(sudo -u $USER prlctl exec $VM_ID powershell -Command "Set-ExecutionPolicy -Scope LocalMachine -ExecutionPolicy RemoteSigned -Force; Install-PackageProvider -Name NuGet -MinimumVersion 2.8.5.201 -Force *>\$null; Install-Module PSWindowsUpdate -Force -AllowClobber; Import-Module PSWindowsUpdate; Install-WindowsUpdate -AcceptAll -AutoReboot | ConvertTo-Json -Depth 5")
     else
-      RESULT=$(sudo -u $USER prlctl exec $VM_ID pwsh -Command "Install-Module PSWindowsUpdate -Force -AllowClobber; Import-Module PSWindowsUpdate; Install-WindowsUpdate -AcceptAll | ConvertTo-Json -Depth 5")
+      RESULT=$(sudo -u $USER prlctl exec $VM_ID powershell -Command "Set-ExecutionPolicy -Scope LocalMachine -ExecutionPolicy RemoteSigned -Force; Install-PackageProvider -Name NuGet -MinimumVersion 2.8.5.201 -Force *>\$null; Install-Module PSWindowsUpdate -Force -AllowClobber; Import-Module PSWindowsUpdate; Install-WindowsUpdate -AcceptAll | ConvertTo-Json -Depth 5")
     fi
   else
     if [ "$AUTO_REBOOT" = "true" ]; then
-      RESULT=$(sudo -u $USER prlctl exec $VM_ID pwsh -Command "Install-Module PSWindowsUpdate -Force -AllowClobber; Import-Module PSWindowsUpdate; Install-WindowsUpdate -KBArticleID $TARGET_KB -AcceptAll -AutoReboot | ConvertTo-Json -Depth 5")
+      RESULT=$(sudo -u $USER prlctl exec $VM_ID powershell -Command "Set-ExecutionPolicy -Scope LocalMachine -ExecutionPolicy RemoteSigned -Force; Install-PackageProvider -Name NuGet -MinimumVersion 2.8.5.201 -Force *>\$null; Install-Module PSWindowsUpdate -Force -AllowClobber; Import-Module PSWindowsUpdate; Install-WindowsUpdate -KBArticleID $TARGET_KB -AcceptAll -AutoReboot | ConvertTo-Json -Depth 5")
     else
-      RESULT=$(sudo -u $USER prlctl exec $VM_ID pwsh -Command "Install-Module PSWindowsUpdate -Force -AllowClobber; Import-Module PSWindowsUpdate; Install-WindowsUpdate -KBArticleID $TARGET_KB -AcceptAll | ConvertTo-Json -Depth 5")
+      RESULT=$(sudo -u $USER prlctl exec $VM_ID powershell -Command "Set-ExecutionPolicy -Scope LocalMachine -ExecutionPolicy RemoteSigned -Force; Install-PackageProvider -Name NuGet -MinimumVersion 2.8.5.201 -Force *>\$null; Install-Module PSWindowsUpdate -Force -AllowClobber; Import-Module PSWindowsUpdate; Install-WindowsUpdate -KBArticleID $TARGET_KB -AcceptAll | ConvertTo-Json -Depth 5")
     fi
   fi
 
@@ -348,7 +353,7 @@ function uninstall_windows_updates() {
     exit 1
   fi
 
-  RESULT=$(sudo -u $USER prlctl exec $VM_ID pwsh -Command "Install-Module PSWindowsUpdate -Force -AllowClobber; Import-Module PSWindowsUpdate; Uninstall-WindowsUpdate -KBArticleID $TARGET_KB | ConvertTo-Json -Depth 5")
+  RESULT=$(sudo -u $USER prlctl exec $VM_ID powershell -Command "Set-ExecutionPolicy -Scope LocalMachine -ExecutionPolicy RemoteSigned -Force; Install-PackageProvider -Name NuGet -MinimumVersion 2.8.5.201 -Force *>\$null; Install-Module PSWindowsUpdate -Force -AllowClobber; Import-Module PSWindowsUpdate; Uninstall-WindowsUpdate -KBArticleID $TARGET_KB | ConvertTo-Json -Depth 5")
 
   set_vm_to_previous_state "$VM_ID" "$VM_STATE"
   last_exit_code=$?
@@ -638,6 +643,26 @@ function check_and_install_updates() {
       vm_id=$(echo "$result" | /tmp/jq -r ".[$i].id")
       has_tools_update=$(echo "$result" | /tmp/jq -r ".[$i].guest_tools" | grep -q "outdated" && echo "true" || echo "false")
       has_vm_updates=$(echo "$result" | /tmp/jq -r ".[$i].updates | length > 0")
+
+      updates=$(echo "$result" | /tmp/jq -r ".[$i].updates" | tr -d '\n' | sed 's/},/},/g')
+      # Write updates to a temporary file to avoid shell interpretation issues
+      temp_updates_file=$(mktemp)
+      temp_reboot_file=$(mktemp)
+      printf '%s' "$updates" >"$temp_updates_file"
+
+      /tmp/jq -c '.[]' "$temp_updates_file" | while IFS= read -r update; do
+        status=$(printf '%s' "$update" | /tmp/jq -r '.status')
+        requires_reboot=$(printf '%s' "$update" | /tmp/jq -r '.requires_reboot')
+
+        if [ "$status" = "-D-----" ] && [ "$requires_reboot" = "true" ]; then
+          echo "true" >"$temp_reboot_file"
+        fi
+      done
+      # Read the result back from the temporary file
+      if [ -f "$temp_reboot_file" ] && [ "$(cat "$temp_reboot_file")" = "true" ]; then
+        REQUIRES_REBOOT="true"
+      fi
+
       if [ "$has_vm_updates" = "true" ] || [ "$has_tools_update" = "true" ]; then
         if [ "$VERBOSE" = "true" ]; then
           echo "Updates available for the following VMs:"
@@ -707,6 +732,9 @@ EOF
         if [ "$CAN_INSTALL" = "true" ]; then
           if [ "$has_vm_updates" = "true" ]; then
             install_windows_updates "$vm_id" "$KB"
+            if [ "$REQUIRES_REBOOT" = "true" ]; then
+              prlctl exec "$vm_id" powershell -Command "shutdown -r now"
+            fi
           fi
 
           max_retries=18
@@ -841,8 +869,12 @@ fi
 # this will run in the background and not wait for the updates to finish
 # so it can release the jamf policy lock
 if [ "$MODE" = "check-and-install" ]; then
-  (
+  if [ "$DEBUG" = "true" ]; then
     check_and_install_updates
-  ) &
-  disown
+  else
+    (
+      check_and_install_updates
+    ) &
+    disown
+  fi
 fi

@@ -4,10 +4,16 @@
 # Check for updates for all the Windows VMs
 #
 # This script will check for updates for all the Windows VMs
-# and return true or false
 #
+# It can return different results depending on the state of the VM.
+# - Has Windows Updates: The VM has updates available that are not installed.
+# - Updated, requires reboot: The VM has updates available that are installed and require a reboot to apply.
+# - Up-to-Date: The VM has no updates available.
 #
 ############
+
+# Pending restart to apply updates
+
 USER=$(stat -f%Su /dev/console)
 function check_for_requirements() {
   prlctl_installed=$(which prlctl)
@@ -40,7 +46,7 @@ function get_list_of_updates() {
   temp_output_file=$(mktemp)
 
   # Execute the command and redirect all output to the temporary file
-  sudo -u $USER prlctl exec $VM_ID pwsh -Command "Install-Module PSWindowsUpdate -Force -AllowClobber; Import-Module PSWindowsUpdate; Get-WindowsUpdate | ForEach-Object { \$_ | Select-Object -Property Title,KB,KBArticleIDs,Size,LastDeploymentChangeTime,Status } | ConvertTo-Json -Depth 5" >"$temp_output_file" 2>/dev/null
+  sudo -u $USER prlctl exec $VM_ID powershell -Command "Set-ExecutionPolicy -Scope LocalMachine -ExecutionPolicy RemoteSigned -Force; usoClient StartScan; Install-PackageProvider -Name NuGet -MinimumVersion 2.8.5.201 -Force *>\$null; Install-Module PSWindowsUpdate -Force -AllowClobber; Import-Module PSWindowsUpdate; Get-WindowsUpdate | ForEach-Object { \$_ | Select-Object -Property Title,KB,KBArticleIDs,Size,LastDeploymentChangeTime,Status,RebootRequired,IsInstalled } | ConvertTo-Json -Depth 5" >"$temp_output_file" 2>/dev/null
 
   last_exit_code=$?
   if [ $last_exit_code -ne 0 ] && [ $last_exit_code -ne 2 ]; then
@@ -65,7 +71,7 @@ function get_list_of_updates() {
   fi
 
   # Process the updates with jq and ensure it's an array
-  updates=$(echo "$raw_updates" | /tmp/jq -c -r 'map({title: .Title, kb: .KB, kbArticleIDs: .KBArticleIDs, size: .Size, lastDeploymentChangeTime: .LastDeploymentChangeTime, status: .Status})')
+  updates=$(echo "$raw_updates" | /tmp/jq -c -r 'map({title: .Title, kb: .KB, kbArticleIDs: .KBArticleIDs, size: .Size, lastDeploymentChangeTime: .LastDeploymentChangeTime, status: .Status, requires_reboot: .RebootRequired, is_installed: .IsInstalled})')
 
   rm -f "$temp_output_file"
   echo "$updates"
@@ -108,6 +114,29 @@ for VM in "${VM_ARRAY[@]}"; do
   # Check if updates is an empty array
   HAS_UPDATES=$(echo "$updates" | /tmp/jq 'length > 0')
   HAS_TOOLS_UPDATE="false"
+  REQUIRES_REBOOT="false"
+
+  updates=$(echo "$updates" | tr -d '\n' | sed 's/},/},/g')
+  # Write updates to a temporary file to avoid shell interpretation issues
+  temp_updates_file=$(mktemp)
+  temp_reboot_file=$(mktemp)
+  printf '%s' "$updates" >"$temp_updates_file"
+
+  /tmp/jq -c '.[]' "$temp_updates_file" | while IFS= read -r update; do
+    status=$(printf '%s' "$update" | /tmp/jq -r '.status')
+    requires_reboot=$(printf '%s' "$update" | /tmp/jq -r '.requires_reboot')
+
+    if [ "$status" = "-D-----" ] && [ "$requires_reboot" = "true" ]; then
+      echo "true" >"$temp_reboot_file"
+    fi
+  done
+  # Read the result back from the temporary file
+  if [ -f "$temp_reboot_file" ] && [ "$(cat "$temp_reboot_file")" = "true" ]; then
+    REQUIRES_REBOOT="true"
+  fi
+
+  rm -f "$temp_reboot_file"
+  rm -f "$temp_updates_file"
   if [ "$tools_state" = "outdated" ]; then
     HAS_UPDATES="true"
     HAS_TOOLS_UPDATE="true"
@@ -123,7 +152,8 @@ for VM in "${VM_ARRAY[@]}"; do
     --arg id "$vm_id" \
     --argjson has_updates "$HAS_UPDATES" \
     --argjson has_tools_update "$HAS_TOOLS_UPDATE" \
-    '{name: $name, id: $id, has_updates: $has_updates, has_tools_update: $has_tools_update}')
+    --argjson requires_reboot "$REQUIRES_REBOOT" \
+    '{name: $name, id: $id, has_updates: $has_updates, has_tools_update: $has_tools_update, requires_reboot: $requires_reboot}')
 
   if [ "$VERBOSE" = "true" ]; then
     if [ "$HAS_UPDATES" = "true" ]; then
@@ -138,6 +168,6 @@ done
 # Process the array and output VM update status in a human-readable format
 
 # LINES=$(printf '%s\n' "${ALL_UPDATES[@]}" | /tmp/jq -s '.[] | "\(.name): \(if .has_updates then "Has Windows Updates" else "Up-to-Date" end)"' | sed 's/^"//;s/"$//' | tr '\n' ',' | sed 's/,$//')
-LINES=$(printf '%s\n' "${ALL_UPDATES[@]}" | /tmp/jq -s '.[] | "\(.name): \(if .has_updates then "Has Windows Updates" else "Up-to-Date" end)"' | sed 's/^"//;s/"$//' | sed 's/,$//')
+LINES=$(printf '%s\n' "${ALL_UPDATES[@]}" | /tmp/jq -s '.[] | "\(.name): \(if .has_updates then if .requires_reboot then "Updated, requires reboot" else "Has Windows Updates" end else "Up-to-Date" end)"' | sed 's/^"//;s/"$//' | sed 's/,$//')
 
 echo "<result>${LINES[*]}</result>"

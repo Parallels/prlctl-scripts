@@ -14,7 +14,8 @@ These scripts allow administrators to manage Windows VMs running in Parallels De
 
 ### windows_vms_update.sh
 
-A comprehensive script for managing Windows updates in Parallels Desktop VMs.
+A comprehensive script for managing Windows updates in Parallels Desktop VMs. This will require the use of powershell and the ability to run scripts.
+We will try to automatically enable these features, but if you are having issues, you can manually enable them.
 
 **Features:**
 
@@ -58,7 +59,7 @@ A utility script to execute commands on Windows VMs through either Command Promp
 **Example:**
 
 ```bash
-./execute_on_windows_vm.sh --mode pwsh --name "Windows VM" --command "Get-Process"
+./execute_on_windows_vm.sh --mode powershell --name "Windows VM" --command "Get-Process"
 ```
 
 ## Requirements
