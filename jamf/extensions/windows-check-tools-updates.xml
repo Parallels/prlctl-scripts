@@ -34,44 +34,6 @@ function list_vms() {
   echo "$VMS"
 }
 
-function get_list_of_updates() {
-  VM_ID=$1
-
-  # Create a temporary file to store the complete output
-  temp_output_file=$(mktemp)
-
-  # Execute the command and redirect all output to the temporary file
-  sudo -u $USER prlctl exec $VM_ID powershell -Command "Set-ExecutionPolicy -Scope LocalMachine -ExecutionPolicy RemoteSigned -Force; usoClient StartScan; Install-PackageProvider -Name NuGet -MinimumVersion 2.8.5.201 -Force *>\$null; Install-Module PSWindowsUpdate -Force -AllowClobber; Import-Module PSWindowsUpdate; Get-WindowsUpdate | ForEach-Object { \$_ | Select-Object -Property Title,KB,KBArticleIDs,Size,LastDeploymentChangeTime,Status,,RebootRequired,IsInstalled } | ConvertTo-Json -Depth 5" >"$temp_output_file" 2>/dev/null
-
-  last_exit_code=$?
-  if [ $last_exit_code -ne 0 ] && [ $last_exit_code -ne 2 ]; then
-    echo "<result>Error: Failed to get updates for $VM_ID</result>"
-    exit 1
-  fi
-
-  # Read and clean the file content
-  raw_updates=$(cat "$temp_output_file")
-
-  # If the output is empty, set it to an empty array
-  if [ -z "$raw_updates" ]; then
-    raw_updates="[]"
-  fi
-
-  # Clean up the raw updates output
-  raw_updates=$(echo "$raw_updates" | grep -v "WARNING" | grep -v "^$")
-
-  # If the output starts with { (single object) and doesn't end with ], wrap it in array brackets
-  if [[ "$raw_updates" =~ ^\{.*$ ]] && [[ ! "$raw_updates" =~ \]$ ]]; then
-    raw_updates="[$raw_updates]"
-  fi
-
-  # Process the updates with jq and ensure it's an array
-  updates=$(echo "$raw_updates" | /tmp/jq -c -r 'map({title: .Title, kb: .KB, kbArticleIDs: .KBArticleIDs, size: .Size, lastDeploymentChangeTime: .LastDeploymentChangeTime, status: .Status})')
-
-  rm -f "$temp_output_file"
-  echo "$updates"
-}
-
 check_for_requirements
 if [ $? -ne 0 ]; then
   echo "<result>Error: Failed to check for requirements</result>"
@@ -100,21 +62,13 @@ for VM in "${VM_ARRAY[@]}"; do
   vm_name=$(echo "$VM" | /tmp/jq -r '.name')
   tools_state=$(echo "$VM" | /tmp/jq -r '.tools_state')
 
-  updates=$(get_list_of_updates "$vm_id" "$vm_name")
   last_exit_code=$?
   if [ $last_exit_code -ne 0 ] && [ $last_exit_code -ne 2 ]; then
     echo "<result>Error: Failed to get updates for $vm_name ($vm_id)</result>"
     exit 1
   fi
-  # Check if updates is an empty array
-  HAS_UPDATES=$(echo "$updates" | /tmp/jq 'length > 0')
   HAS_TOOLS_UPDATE="false"
   if [ "$tools_state" = "outdated" ]; then
-    HAS_UPDATES="true"
-    HAS_TOOLS_UPDATE="true"
-  fi
-  if [ "$HAS_UPDATES" = "false" ] && [ "$tools_state" = "outdated" ]; then
-    HAS_UPDATES="true"
     HAS_TOOLS_UPDATE="true"
   fi
 
@@ -122,9 +76,8 @@ for VM in "${VM_ARRAY[@]}"; do
   vm_update_status=$(/tmp/jq -n \
     --arg name "$vm_name" \
     --arg id "$vm_id" \
-    --argjson has_updates "$HAS_UPDATES" \
     --argjson has_tools_update "$HAS_TOOLS_UPDATE" \
-    '{name: $name, id: $id, has_updates: $has_updates, has_tools_update: $has_tools_update}')
+    '{name: $name, id: $id, has_tools_update: $has_tools_update}')
 
   if [ "$VERBOSE" = "true" ]; then
     if [ "$HAS_UPDATES" = "true" ]; then
