@@ -290,7 +290,7 @@ function get_list_of_updates() {
 
   last_exit_code=$?
   if [ $last_exit_code -ne 0 ] && [ $last_exit_code -ne 2 ]; then
-    echo "Error: Failed to get updaßtes for $VM_ID"
+    echo "Error: Failed to get updates for $VM_ID"
     exit 1
   fi
 
