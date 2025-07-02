@@ -64,13 +64,27 @@ function check_for_requirements() {
     exit 1
   fi
 
+  # testing if jq is correctly working
+  if [[ -f "/tmp/jq" ]]; then
+    version=$(/tmp/jq --version)
+    if [[ $? -ne 0 ]]; then
+      rm -f /tmp/jq
+      echo "jq is not working, version: $version"
+    fi
+  fi
+
   # Check if jq is installed
   if [[ ! -f "/tmp/jq" ]]; then
     if [ "$VERBOSE" = "true" ]; then
       echo "jq is not installed. Installing temporary version..."
     fi
 
-    curl -Ls -o /tmp/jq https://github.com/jqlang/jq/releases/download/jq-1.7.1/jq-macos-arm64
+    arch=$(uname -m)
+    if [ "$arch" = "x86_64" ]; then
+      arch="amd64"
+    fi
+
+    curl -Ls -o /tmp/jq https://github.com/jqlang/jq/releases/download/jq-1.7.1/jq-macos-"$arch"
     chmod +x /tmp/jq
     xattr -dr com.apple.quarantine /tmp/jq
   fi
@@ -252,6 +266,10 @@ function set_vm_to_previous_state() {
     fi
   fi
 }
+function install_modules() {
+  VM_ID=$1
+  sudo -u $USER prlctl exec $VM_ID powershell -Command "Set-ExecutionPolicy -Scope LocalMachine -ExecutionPolicy RemoteSigned -Force; usoClient StartScan; Install-PackageProvider -Name NuGet -MinimumVersion 2.8.5.201 -Force; Install-Module PSWindowsUpdate -Force -AllowClobber;"
+}
 
 function get_list_of_updates() {
   VM_ID=$1
@@ -268,11 +286,11 @@ function get_list_of_updates() {
   temp_output_file=$(mktemp)
 
   # Execute the command and redirect all output to the temporary file
-  sudo -u $USER prlctl exec $VM_ID powershell -Command "Set-ExecutionPolicy -Scope LocalMachine -ExecutionPolicy RemoteSigned -Force; usoClient StartScan; Install-PackageProvider -Name NuGet -MinimumVersion 2.8.5.201 -Force *>\$null; Install-Module PSWindowsUpdate -Force -AllowClobber; Import-Module PSWindowsUpdate; Get-WindowsUpdate | ForEach-Object { \$_ | Select-Object -Property Title,KB,KBArticleIDs,Size,LastDeploymentChangeTime,Status,RebootRequired,IsInstalled } | ConvertTo-Json -Depth 5" >"$temp_output_file" 2>/dev/null
+  sudo -u $USER prlctl exec $VM_ID powershell -Command "Set-ExecutionPolicy -Scope LocalMachine -ExecutionPolicy RemoteSigned -Force; usoClient StartScan; Import-Module PSWindowsUpdate; Get-WindowsUpdate | ForEach-Object { \$_ | Select-Object -Property Title,KB,KBArticleIDs,Size,LastDeploymentChangeTime,Status,RebootRequired,IsInstalled } | ConvertTo-Json -Depth 5" >"$temp_output_file" 2>/dev/null
 
   last_exit_code=$?
   if [ $last_exit_code -ne 0 ] && [ $last_exit_code -ne 2 ]; then
-    echo "Error: Failed to get updates for $VM_ID"
+    echo "Error: Failed to get updaßtes for $VM_ID"
     exit 1
   fi
 
@@ -480,6 +498,8 @@ function check_for_updates() {
     if [ "$VERBOSE" = "true" ]; then
       echo "Checking for updates in $vm_name ($vm_id)"
     fi
+    install_modules "$vm_id"
+
     updates=$(get_list_of_updates "$vm_id" "$vm_state" | tail -n1)
     last_exit_code=$?
     if [ $last_exit_code -ne 0 ] && [ $last_exit_code -ne 2 ]; then
@@ -582,6 +602,7 @@ function list_updates() {
     if [ "$VERBOSE" = "true" ]; then
       echo "Checking for updates in $vm_name ($vm_id)"
     fi
+    install_modules "$vm_id"
     updates=$(get_list_of_updates "$vm_id" "$vm_state" | tail -n1)
     last_exit_code=$?
     if [ $last_exit_code -ne 0 ] && [ $last_exit_code -ne 2 ]; then
@@ -733,7 +754,7 @@ EOF
           if [ "$has_vm_updates" = "true" ]; then
             install_windows_updates "$vm_id" "$KB"
             if [ "$REQUIRES_REBOOT" = "true" ]; then
-              prlctl exec "$vm_id" powershell -Command "shutdown -r now"
+              prlctl exec "$vm_id" powershell -Command "shutdown /r /t 0 /f"
             fi
           fi
 

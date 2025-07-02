@@ -13,17 +13,31 @@ USER=$(stat -f%Su /dev/console)
 function check_for_requirements() {
   prlctl_installed=$(which prlctl)
   if [[ -z "$prlctl_installed" ]]; then
-    echo "<result>prlctl is not installed</result>"
+    echo "prlctl is not installed"
     exit 1
+  fi
+
+  # testing if jq is correctly working
+  if [[ -f "/tmp/jq" ]]; then
+    version=$(/tmp/jq --version)
+    if [[ $? -ne 0 ]]; then
+      rm -f /tmp/jq
+      echo "jq is not working, version: $version"
+    fi
   fi
 
   # Check if jq is installed
   if [[ ! -f "/tmp/jq" ]]; then
     if [ "$VERBOSE" = "true" ]; then
-      echo "<result>jq is not installed. Installing temporary version...</result>"
+      echo "jq is not installed. Installing temporary version..."
     fi
 
-    curl -Ls -o /tmp/jq https://github.com/jqlang/jq/releases/download/jq-1.7.1/jq-macos-arm64
+    arch=$(uname -m)
+    if [ "$arch" = "x86_64" ]; then
+      arch="amd64"
+    fi
+
+    curl -Ls -o /tmp/jq https://github.com/jqlang/jq/releases/download/jq-1.7.1/jq-macos-"$arch"
     chmod +x /tmp/jq
     xattr -dr com.apple.quarantine /tmp/jq
   fi
