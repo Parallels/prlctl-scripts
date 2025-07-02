@@ -32,7 +32,7 @@ FORCE="false"
 USER=""
 USER_ID=""
 TARGET_VM_IDS=()
-DEBUG="false"
+DEBUG="true"
 KB=""
 
 # check if the unattended parameter is true
@@ -268,7 +268,7 @@ function set_vm_to_previous_state() {
 }
 function install_modules() {
   VM_ID=$1
-  sudo -u $USER prlctl exec $VM_ID powershell -Command "Set-ExecutionPolicy -Scope LocalMachine -ExecutionPolicy RemoteSigned -Force; usoClient StartScan; Install-PackageProvider -Name NuGet -MinimumVersion 2.8.5.201 -Force; Install-Module PSWindowsUpdate -Force -AllowClobber;"
+  OUTPUT=$(sudo -u $USER prlctl exec $VM_ID powershell -Command "Set-ExecutionPolicy -Scope LocalMachine -ExecutionPolicy RemoteSigned -Force; usoClient StartScan; Install-PackageProvider -Name NuGet -MinimumVersion 2.8.5.201 -Force; Install-Module PSWindowsUpdate -Force -AllowClobber;")
 }
 
 function get_list_of_updates() {
