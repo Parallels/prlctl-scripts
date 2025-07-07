@@ -32,7 +32,7 @@ FORCE="false"
 USER=""
 USER_ID=""
 TARGET_VM_IDS=()
-DEBUG="true"
+DEBUG="false"
 KB=""
 
 # check if the unattended parameter is true
@@ -143,10 +143,18 @@ function suspend_vm() {
   sudo -u "$USER" prlctl suspend "$VM_ID"
 }
 
+function start_vm() {
+  VM_ID=$1
+  sudo -u "$USER" prlctl start "$VM_ID"
+}
+
 function await_for_vm_to_be_running() {
   VM_ID=$1
   MAX_WAIT_TIME=10
   while true; do
+    if [ "$VERBOSE" = "true" ]; then
+      echo "Waiting for VM $VM_ID to be running"
+    fi
     CURRENT_STATE=$(sudo -u "$USER" prlctl list "$VM_ID" -a -i --json | /tmp/jq -r ".[0] | .State")
     if [ "$CURRENT_STATE" = "running" ]; then
       break
@@ -159,6 +167,9 @@ function await_for_vm_to_be_running() {
     fi
   done
   while true; do
+    if [ "$VERBOSE" = "true" ]; then
+      echo "Waiting for VM $VM_ID to be ready"
+    fi
     sudo -u $USER prlctl exec $VM_ID cmd /c 'echo "hello" > $null'
     last_exit_code=$?
     if [ $last_exit_code -eq 0 ]; then
@@ -171,6 +182,9 @@ function await_for_vm_to_be_running() {
       exit 1
     fi
   done
+  if [ "$VERBOSE" = "true" ]; then
+    echo "VM $VM_ID is ready"
+  fi
 }
 
 function initialize_vm() {
@@ -182,11 +196,17 @@ function initialize_vm() {
   fi
 
   if [ "$VM_STATE" = "running" ]; then
+    if [ "$VERBOSE" = "true" ]; then
+      echo "VM $VM_ID is already running, waiting for it to be ready"
+    fi
     await_for_vm_to_be_running "$VM_ID"
     last_exit_code=$?
     if [ $last_exit_code -ne 0 ]; then
       echo "Error: Failed to resume VM $VM_ID"
       exit 1
+    fi
+    if [ "$VERBOSE" = "true" ]; then
+      echo "VM $VM_ID is ready"
     fi
   fi
   if [ "$VM_STATE" = "paused" ]; then
@@ -330,32 +350,25 @@ function install_windows_updates() {
   VM_STATE=$3
 
   initialize_vm "$VM_ID" "$VM_STATE"
+  if [ "$VERBOSE" = "true" ]; then
+    echo "Initializing VM $VM_ID"
+  fi
   last_exit_code=$?
   if [ $last_exit_code -ne 0 ]; then
     echo "Error: Failed to resume VM $VM_ID"
     exit 1
   fi
 
-  if [ -z "$TARGET_KB" ]; then
-    if [ "$AUTO_REBOOT" = "true" ]; then
-      RESULT=$(sudo -u $USER prlctl exec $VM_ID powershell -Command "Set-ExecutionPolicy -Scope LocalMachine -ExecutionPolicy RemoteSigned -Force; Install-PackageProvider -Name NuGet -MinimumVersion 2.8.5.201 -Force *>\$null; Install-Module PSWindowsUpdate -Force -AllowClobber; Import-Module PSWindowsUpdate; Install-WindowsUpdate -AcceptAll -AutoReboot | ConvertTo-Json -Depth 5")
-    else
-      RESULT=$(sudo -u $USER prlctl exec $VM_ID powershell -Command "Set-ExecutionPolicy -Scope LocalMachine -ExecutionPolicy RemoteSigned -Force; Install-PackageProvider -Name NuGet -MinimumVersion 2.8.5.201 -Force *>\$null; Install-Module PSWindowsUpdate -Force -AllowClobber; Import-Module PSWindowsUpdate; Install-WindowsUpdate -AcceptAll | ConvertTo-Json -Depth 5")
-    fi
-  else
-    if [ "$AUTO_REBOOT" = "true" ]; then
-      RESULT=$(sudo -u $USER prlctl exec $VM_ID powershell -Command "Set-ExecutionPolicy -Scope LocalMachine -ExecutionPolicy RemoteSigned -Force; Install-PackageProvider -Name NuGet -MinimumVersion 2.8.5.201 -Force *>\$null; Install-Module PSWindowsUpdate -Force -AllowClobber; Import-Module PSWindowsUpdate; Install-WindowsUpdate -KBArticleID $TARGET_KB -AcceptAll -AutoReboot | ConvertTo-Json -Depth 5")
-    else
-      RESULT=$(sudo -u $USER prlctl exec $VM_ID powershell -Command "Set-ExecutionPolicy -Scope LocalMachine -ExecutionPolicy RemoteSigned -Force; Install-PackageProvider -Name NuGet -MinimumVersion 2.8.5.201 -Force *>\$null; Install-Module PSWindowsUpdate -Force -AllowClobber; Import-Module PSWindowsUpdate; Install-WindowsUpdate -KBArticleID $TARGET_KB -AcceptAll | ConvertTo-Json -Depth 5")
-    fi
+  if [ "$VERBOSE" = "true" ]; then
+    echo "Installing Windows updates for $VM_ID"
   fi
 
-  set_vm_to_previous_state "$VM_ID" "$VM_STATE"
-  last_exit_code=$?
-  if [ $last_exit_code -ne 0 ]; then
-    echo "Error: Failed to set VM $VM_ID to previous state"
-    exit 1
+  if [ -z "$TARGET_KB" ]; then
+    RESULT=$(sudo -u $USER prlctl exec $VM_ID powershell -Command "Set-ExecutionPolicy -Scope LocalMachine -ExecutionPolicy RemoteSigned -Force; Install-Module PSWindowsUpdate -Force -AllowClobber; Import-Module PSWindowsUpdate; Install-WindowsUpdate -AcceptAll  -AutoReboot:\$false -IgnoreReboot | ConvertTo-Json -Depth 5")
+  else
+    RESULT=$(sudo -u $USER prlctl exec $VM_ID powershell -Command "Set-ExecutionPolicy -Scope LocalMachine -ExecutionPolicy RemoteSigned -Force; Install-Module PSWindowsUpdate -Force -AllowClobber; Import-Module PSWindowsUpdate; Install-WindowsUpdate -KBArticleID $TARGET_KB -AcceptAll  -AutoReboot:\$false -IgnoreReboot | ConvertTo-Json -Depth 5")
   fi
+
   echo "Windows Update installed"
 }
 
@@ -752,9 +765,67 @@ EOF
 
         if [ "$CAN_INSTALL" = "true" ]; then
           if [ "$has_vm_updates" = "true" ]; then
+            if [ "$VERBOSE" = "true" ]; then
+              echo "Installing Windows updates for $vm_name ($vm_id)"
+            fi
             install_windows_updates "$vm_id" "$KB"
             if [ "$REQUIRES_REBOOT" = "true" ]; then
-              prlctl exec "$vm_id" powershell -Command "shutdown /r /t 0 /f"
+              prlctl exec "$vm_id" powershell -Command "shutdown /s /t 0 /f"
+              sleep 10
+              if [ "$VERBOSE" = "true" ]; then
+                echo "Stopping the VM"
+              fi
+              # wait for the vm to be stopped so we know the update is finished
+              max_retries=30
+              retries=0
+              while true; do
+                if [ "$VERBOSE" = "true" ]; then
+                  echo "Waiting for the VM to be stopped"
+                fi
+                CURRENT_STATE=$(sudo -u "$USER" prlctl list "$VM_ID" -a -i --json | /tmp/jq -r ".[0] | .State")
+                if [ "$CURRENT_STATE" = "stopped" ]; then
+                  break
+                fi
+                retries=$((retries + 1))
+                if [ "$retries" -ge "$max_retries" ]; then
+                  echo "VM $VM_ID failed to stop after $max_retries retries"
+                  exit 1
+                fi
+                sleep 10
+              done
+              # wait for the vm to be running again
+              max_retries=30
+              retries=0
+              if [ "$VERBOSE" = "true" ]; then
+                echo "Starting the VM"
+              fi
+              start_vm "$VM_ID"
+              while true; do
+                if [ "$VERBOSE" = "true" ]; then
+                  echo "Waiting for the VM to be started"
+                fi
+                CURRENT_STATE=$(sudo -u "$USER" prlctl list "$VM_ID" -a -i --json | /tmp/jq -r ".[0] | .State")
+                if [ "$CURRENT_STATE" = "running" ]; then
+                  await_for_vm_to_be_running "$VM_ID"
+                  break
+                fi
+                retries=$((retries + 1))
+                if [ "$retries" -ge "$max_retries" ]; then
+                  echo "VM $VM_ID failed to start after $max_retries retries"
+                  exit 1
+                fi
+                sleep 10
+              done
+            fi
+            if [ "$VERBOSE" = "true" ]; then
+              echo "Setting the VM to the previous state"
+            fi
+            # set the vm to the previous state
+            set_vm_to_previous_state "$VM_ID" "$VM_STATE"
+            last_exit_code=$?
+            if [ $last_exit_code -ne 0 ]; then
+              echo "Error: Failed to set VM $VM_ID to previous state"
+              exit 1
             fi
           fi
 
@@ -816,6 +887,13 @@ function install_updates() {
       fi
     fi
     install_windows_updates "$TARGET_VM_ID" "$KB"
+
+    set_vm_to_previous_state "$TARGET_VM_ID" "$VM_STATE"
+    last_exit_code=$?
+    if [ $last_exit_code -ne 0 ]; then
+      echo "Error: Failed to set VM $TARGET_VM_ID to previous state"
+      exit 1
+    fi
   done
 }
 
