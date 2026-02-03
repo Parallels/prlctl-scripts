@@ -79,6 +79,9 @@ EXCLUDED_APPS=(
     "Windows Backup"
     "Windows Media Player Legacy"
     "Windows PowerShell"
+    "Windows PowerShell \(x86\)"
+    "Windows PowerShell ISE"
+    "Windows PowerShell ISE \(x86\)"
     "Windows Security"
 )
 
@@ -107,10 +110,13 @@ is_excluded() {
     local app_name="$1"
     local pattern
     
+    # Strip .app for easier matching if present
+    local clean_name="${app_name%.app}"
+    
     for pattern in "${EXCLUDED_APPS[@]}"; do
-        # Use bash regex matching (=~)
-        # Note: This is case-sensitive by default.
-        if [[ "$app_name" =~ $pattern ]]; then
+        # Use ^ and $ to ensure exact match of the pattern against the clean name
+        local regex="^${pattern}$"
+        if [[ "$clean_name" =~ $regex ]]; then
             return 0 # True, it is excluded
         fi
     done
