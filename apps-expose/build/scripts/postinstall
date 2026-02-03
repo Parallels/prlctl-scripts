@@ -1,0 +1,19 @@
+#!/bin/bash
+# postinstall script
+
+# Correct permissions just in case
+chown root:wheel /usr/local/bin/parallels_apps_expose_service.sh
+chmod 755 /usr/local/bin/parallels_apps_expose_service.sh
+chown root:wheel /Library/LaunchAgents/com.company.parallels-apps-expose-service.plist
+chmod 644 /Library/LaunchAgents/com.company.parallels-apps-expose-service.plist
+
+# Load Agent for the currently logged in user (if any)
+CURRENT_USER=$(scutil <<< "show State:/Users/ConsoleUser" | awk '/Name :/ && ! /loginwindow/ { print $3 }')
+USER_ID=$(id -u "$CURRENT_USER")
+
+if [[ -n "$CURRENT_USER" ]]; then
+    echo "Loading agent for user: $CURRENT_USER ($USER_ID)"
+    launchctl bootstrap gui/$USER_ID /Library/LaunchAgents/com.company.parallels-apps-expose-service.plist
+fi
+
+exit 0
