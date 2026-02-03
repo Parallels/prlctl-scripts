@@ -126,3 +126,7 @@ Or manually:
 
 Logs are written to:
 `~/Library/Logs/ParallelsAppsExposeService/service.log`
+
+## Known issues
+
+Non classic applications (e.g., packaged as MSIX) are not detected and exposed right away. The VM restart, App start or resetting the setting "Share Windows Applications with Mac" can enforce their detection. This might be addressed in Parallels Desktop updates.
