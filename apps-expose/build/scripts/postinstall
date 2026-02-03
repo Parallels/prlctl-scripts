@@ -12,7 +12,10 @@ CURRENT_USER=$(scutil <<< "show State:/Users/ConsoleUser" | awk '/Name :/ && ! /
 USER_ID=$(id -u "$CURRENT_USER")
 
 if [[ -n "$CURRENT_USER" ]]; then
-    echo "Loading agent for user: $CURRENT_USER ($USER_ID)"
+    echo "Restarting agent for user: $CURRENT_USER ($USER_ID)"
+    # Use bootout first to ensure we stop any running instance
+    launchctl bootout gui/$USER_ID /Library/LaunchAgents/com.company.parallels-apps-expose-service.plist 2>/dev/null
+    # Then bootstrap to start the new version
     launchctl bootstrap gui/$USER_ID /Library/LaunchAgents/com.company.parallels-apps-expose-service.plist
 fi
 
