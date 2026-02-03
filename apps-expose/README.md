@@ -24,6 +24,12 @@ This solution solves the problem of hidden Windows applications in enterprise Pa
 ### Deploying via Jamf
  Upload `ParallelsAppsExposeService.pkg` to Jamf Pro and deploy to target computers. The package includes a `postinstall` script that will attempt to load the agent for the current user immediately.
 
+To build the package:
+```bash
+./package.sh
+```
+Artifact will be created at `build/ParallelsAppsExposeService.pkg`.
+
 ## MDM Configuration (Preventing Notifications)
 
 When the service is installed, macOS will show a "Background Items Added" notification. To suppress this notification in a managed environment, you must deploy a Configuration Profile.
@@ -120,11 +126,3 @@ Or manually:
 
 Logs are written to:
 `~/Library/Logs/ParallelsAppsExposeService/service.log`
-
-## Build from Source
-
-To build the signed package:
-```bash
-./package.sh
-```
-Artifact will be created at `build/ParallelsAppsExposeService.pkg`.
