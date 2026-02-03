@@ -1,6 +1,6 @@
 # Parallels Windows Apps Exposure Service
 
-A macOS background service that automatically monitors, exposes, and exposes Windows applications from a Parallels Desktop VM to the macOS Dock.
+A macOS background service that automatically monitors and exposes Windows applications from a Parallels Desktop VM to the macOS Dock.
 
 ## Detect, Expose, Dock.
 
