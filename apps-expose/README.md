@@ -4,7 +4,9 @@ A macOS background service that automatically monitors and exposes Windows appli
 
 ## Detect, Expose, Dock.
 
-This solution solves the problem of hidden Windows applications in enterprise Parallels deployments. It continuously monitors the Parallels VM application folder and mirrors eligible apps to a `Windows Apps` folder visible in the macOS Dock.
+This solution solves the problem of making user aware of new non default Windows applications in users posession (e.g. when setup of apps is conducted by device management solutions). It continuously monitors the Parallels VM application folder and mirrors eligible apps to a `Windows Apps` folder visible in the macOS Dock.
+
+![demo](https://media2.giphy.com/media/v1.Y2lkPTc5MGI3NjExM3l5M2RpdHI4Y25hMWd2cTVjaGF0dml2NTg3ajYzOXNwMXQxdWhtYiZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/YqiQakOtpYKMRaAtXq/giphy.gif)
 
 ## Features
 
