@@ -128,6 +128,7 @@ is_excluded() {
 # ==============================================================================
 
 sync_apps() {
+    local changed=0
     # Ensure destination directory exists at the start of every sync cycle
     # This prevents 'ln: .../Windows Apps/xxx: No such file or directory' if user deleted the folder.
     ensure_dest_dir
@@ -148,6 +149,7 @@ sync_apps() {
                 if is_excluded "$link_name"; then
                     log "Removing excluded link: $link_name"
                     rm "$link"
+                    changed=1
                     continue
                 fi
 
@@ -156,6 +158,7 @@ sync_apps() {
                 if [[ ! -e "$target" ]]; then
                     log "Removing orphaned link: $link_name"
                     rm "$link"
+                    changed=1
                 fi
             fi
         done
@@ -164,7 +167,7 @@ sync_apps() {
     # 2. DISCOVER AND LINK NEW APPS
     # Log the find command for debugging
     # Using -print0 to handle special characters correctly
-    find "$SOURCE_ROOT" -mindepth 2 -name "*.app" -type d -print0 | while IFS= read -r -d '' app_path; do
+    while IFS= read -r -d '' app_path; do
         
         # Skip if path contains DEST_DIR to prevent recursion
         if [[ "$app_path" == *"$DEST_DIR"* ]]; then
@@ -178,30 +181,50 @@ sync_apps() {
             continue
         fi
 
-        dest_link="$DEST_DIR/$app_name"
-
-        # Check if link exists
-        if [[ -L "$dest_link" ]]; then
-            current_target=$(readlink "$dest_link")
-            if [[ "$current_target" != "$app_path" ]]; then
-                log "Updating link for $app_name"
-                rm "$dest_link"
+        # Find a stable name for this app (handling collisions)
+        candidate_name="$app_name"
+        counter=2
+        while true; do
+            dest_link="$DEST_DIR/$candidate_name"
+            
+            if [[ -L "$dest_link" ]]; then
+                current_target=$(readlink "$dest_link")
+                if [[ "$current_target" == "$app_path" ]]; then
+                    # This link already points to this app. Stable.
+                    break
+                else
+                    # Collision! This name is taken by another app path.
+                    candidate_name="${app_name%.app} ($counter).app"
+                    ((counter++))
+                fi
+            elif [[ -e "$dest_link" ]]; then
+                 log "Warning: $dest_link exists but is not a symlink. Skipping this name."
+                 candidate_name="${app_name%.app} ($counter).app"
+                 ((counter++))
+            else
+                # Found a free name
+                log "Exposing new app: $candidate_name"
                 ln -s "$app_path" "$dest_link"
+                changed=1
+                break
             fi
-        elif [[ -e "$dest_link" ]]; then
-             log "Warning: File exists at $dest_link but is not a symlink. Skipping."
-        else
-            log "Exposing new app: $app_name"
-            ln -s "$app_path" "$dest_link"
-        fi
+            
+            # Safety break to prevent infinite loop (unlikely but good practice)
+            if [[ $counter -gt 50 ]]; then
+                log "Error: Too many collisions for $app_name. Giving up."
+                break
+            fi
+        done
 
-    done
+    done < <(find "$SOURCE_ROOT" -mindepth 2 -name "*.app" -type d -print0)
+
+    return $changed
 }
 
 manage_dock() {
     # Check if destination directory has content
     HAS_CONTENT=false
-    if [[ -n "$(ls -A "$DEST_DIR" 2>/dev/null)" ]]; then
+    if [[ -d "$DEST_DIR" && -n "$(ls -A "$DEST_DIR" 2>/dev/null)" ]]; then
         HAS_CONTENT=true
     fi
 
@@ -214,9 +237,11 @@ manage_dock() {
     # We dump to a temp variable to avoid running plutil multiple times
     CURR_DOCK_XML=$(plutil -convert xml1 "$dock_plist" -o -)
     
-    if echo "$CURR_DOCK_XML" | grep -Fq "$DEST_DIR" || \
-       echo "$CURR_DOCK_XML" | grep -Fq "$DEST_DIR_URL" || \
-       echo "$CURR_DOCK_XML" | grep -q "<string>Windows Apps</string>"; then
+    # Improved check: look for "Windows Apps" label specifically in persistent-others
+    # This avoids matches in other sections of the plist.
+    if echo "$CURR_DOCK_XML" | sed -n '/<key>persistent-others<\/key>/,/<\/array>/p' | grep -q "<string>Windows Apps</string>" || \
+       echo "$CURR_DOCK_XML" | sed -n '/<key>persistent-others<\/key>/,/<\/array>/p' | grep -Fq "$DEST_DIR" || \
+       echo "$CURR_DOCK_XML" | sed -n '/<key>persistent-others<\/key>/,/<\/array>/p' | grep -Fq "$DEST_DIR_URL"; then
        IS_IN_DOCK=true
     fi
 
@@ -315,8 +340,15 @@ EOF
 log "Agent started. Monitoring $SOURCE_ROOT"
 ensure_dest_dir
 
+FIRST_RUN=1
 while true; do
     sync_apps
-    manage_dock
+    SYNC_STATUS=$?
+    
+    if [[ $SYNC_STATUS -eq 1 || $FIRST_RUN -eq 1 ]]; then
+        manage_dock
+        FIRST_RUN=0
+    fi
+    
     sleep "$POLL_INTERVAL"
 done
