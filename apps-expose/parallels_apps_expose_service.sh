@@ -28,6 +28,8 @@ DEST_DIR="$SOURCE_ROOT/Windows Apps"
 # Add each app as a separate line in the array.
 # These are treated as Regex patterns.
 INCLUDED_APPS=(
+    # "Power BI Desktop"
+    # "Excel"
 )
 
 # Applications to exclude (used only when FILTER_MODE=exclude)

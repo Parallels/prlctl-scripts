@@ -88,8 +88,8 @@ Set `FILTER_MODE=include` and list **only** the apps you want to **expose** in t
 FILTER_MODE=include
 
 INCLUDED_APPS=(
-    "My Corporate App"
-    "Another Tool"
+    "Power BI Desktop"
+    "Excel"
     # … only these apps will appear in the Windows Apps folder
 )
 ```
