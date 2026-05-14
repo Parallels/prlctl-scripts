@@ -1,36 +1,43 @@
-#!/bin/bash
-
-############
-# Get the license of Parallels Desktop
-#
-# This script will get the license of Parallels Desktop copy
-# The middle part of a license key is hidden for security reasons.
-# Example: 6J9A5T-******-******-******-RN17ZA
-# However, this should be enough to detect if users in your organizations are using the 
-# same license, or, if you are using sublicense keys, they are activated with a proper group key.
-#
-############
-
-is_installed=$(which prlsrvctl)
-
-if [[ $is_installed ]]; then
-  license_output=$(prlsrvctl info | grep "License:")
-
-  if [[ -n "$license_output" ]]; then
-    license_state=$(echo "$license_output" | awk -F "state='" '{print $2}' | awk -F "'" '{print $1}')
-    license_key=$(echo "$license_output" | awk -F "key='" '{print $2}' | awk -F "'" '{print $1}')
-
-    if [[ "$license_state" == "valid" ]]; then
-      echo "<result>$license_key</result>"
-    else
-      echo "<result>$license_state</result>"
-    fi
-  else
-    echo "<result>No License found</result>"
-  fi
-else
-  echo "<result>Parallels is not installed</result>"
-  exit 1
-fi
-
-exit 0
+<?xml version="1.0" encoding="UTF-8"?>
+<extensionAttribute>
+  <displayName>Parallels Get License</displayName>
+  <description>!/bin/bash.</description>
+  <dataType>string</dataType>
+  <scriptContentsMac>#!/bin/bash&#13;&#13;
+&#13;&#13;
+############&#13;&#13;
+# Get the license of Parallels Desktop&#13;&#13;
+#&#13;&#13;
+# This script will get the license of Parallels Desktop copy&#13;&#13;
+# The middle part of a license key is hidden for security reasons.&#13;&#13;
+# Example: 6J9A5T-******-******-******-RN17ZA&#13;&#13;
+# However, this should be enough to detect if users in your organizations are using the &#13;&#13;
+# same license, or, if you are using sublicense keys, they are activated with a proper group key.&#13;&#13;
+#&#13;&#13;
+############&#13;&#13;
+&#13;&#13;
+is_installed=$(which prlsrvctl)&#13;&#13;
+&#13;&#13;
+if [[ $is_installed ]]; then&#13;&#13;
+  license_output=$(prlsrvctl info | grep "License:")&#13;&#13;
+&#13;&#13;
+  if [[ -n "$license_output" ]]; then&#13;&#13;
+    license_state=$(echo "$license_output" | awk -F "state='" '{print $2}' | awk -F "'" '{print $1}')&#13;&#13;
+    license_key=$(echo "$license_output" | awk -F "key='" '{print $2}' | awk -F "'" '{print $1}')&#13;&#13;
+&#13;&#13;
+    if [[ "$license_state" == "valid" ]]; then&#13;&#13;
+      echo "&lt;result&gt;$license_key&lt;/result&gt;"&#13;&#13;
+    else&#13;&#13;
+      echo "&lt;result&gt;$license_state&lt;/result&gt;"&#13;&#13;
+    fi&#13;&#13;
+  else&#13;&#13;
+    echo "&lt;result&gt;No License found&lt;/result&gt;"&#13;&#13;
+  fi&#13;&#13;
+else&#13;&#13;
+  echo "&lt;result&gt;Parallels is not installed&lt;/result&gt;"&#13;&#13;
+  exit 1&#13;&#13;
+fi&#13;&#13;
+&#13;&#13;
+exit 0</scriptContentsMac>
+  <scriptContentsWindows/>
+</extensionAttribute>

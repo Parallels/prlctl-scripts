@@ -1,195 +1,202 @@
-#!/bin/bash
-
-############
-# Check for updates for all the Windows VMs
-#
-# This script will check for updates for all the Windows VMs
-#
-# It can return different results depending on the state of the VM.
-# - Has Windows Updates: The VM has updates available that are not installed.
-# - Updated, requires reboot: The VM has updates available that are installed and require a reboot to apply.
-# - Up-to-Date: The VM has no updates available.
-#
-############
-
-# Pending restart to apply updates
-
-USER=$(stat -f%Su /dev/console)
-
-function check_for_requirements() {
-  prlctl_installed=$(which prlctl)
-  if [[ -z "$prlctl_installed" ]]; then
-    echo "prlctl is not installed"
-    exit 1
-  fi
-
-  # testing if jq is correctly working
-  if [[ -f "/tmp/jq" ]]; then
-    version=$(/tmp/jq --version)
-    if [[ $? -ne 0 ]]; then
-      rm -f /tmp/jq
-      echo "jq is not working, version: $version"
-    fi
-  fi
-
-  # Check if jq is installed
-  if [[ ! -f "/tmp/jq" ]]; then
-    if [ "$VERBOSE" = "true" ]; then
-      echo "jq is not installed. Installing temporary version..."
-    fi
-
-    arch=$(uname -m)
-    if [ "$arch" = "x86_64" ]; then
-      arch="amd64"
-    fi
-
-    curl -Ls -o /tmp/jq https://github.com/jqlang/jq/releases/download/jq-1.7.1/jq-macos-"$arch"
-    chmod +x /tmp/jq
-    xattr -dr com.apple.quarantine /tmp/jq
-  fi
-}
-
-function list_vms() {
-  VMS=$(sudo -u $USER prlctl list -a -i --json | /tmp/jq -r 'map(select((.OS == "win-10" or .OS == "win-11" or .OS=="ubuntu") and .State == "running") | {id:.ID, name: .Name, tools_state: .GuestTools.state})')
-  echo "$VMS"
-}
-
-function install_modules() {
-  VM_ID=$1
-  OUTPUT=$(sudo -u $USER prlctl exec $VM_ID powershell -Command "Set-ExecutionPolicy -Scope LocalMachine -ExecutionPolicy RemoteSigned -Force; usoClient StartScan; Install-PackageProvider -Name NuGet -MinimumVersion 2.8.5.201 -Force; Install-Module PSWindowsUpdate -Force -AllowClobber;")
-}
-
-function get_list_of_updates() {
-  VM_ID=$1
-
-  # Create a temporary file to store the complete output
-  temp_output_file=$(mktemp)
-
-  # Execute the command and redirect all output to the temporary file
-  sudo -u $USER prlctl exec $VM_ID powershell -Command "Set-ExecutionPolicy -Scope LocalMachine -ExecutionPolicy RemoteSigned -Force; usoClient StartScan; Install-Module PSWindowsUpdate -Force -AllowClobber; Import-Module PSWindowsUpdate; Get-WindowsUpdate | ForEach-Object { \$_ | Select-Object -Property Title,KB,KBArticleIDs,Size,LastDeploymentChangeTime,Status,RebootRequired,IsInstalled } | ConvertTo-Json -Depth 5" >"$temp_output_file" 2>/dev/null
-
-  last_exit_code=$?
-  if [ $last_exit_code -ne 0 ] && [ $last_exit_code -ne 2 ]; then
-    echo "<result>Error: Failed to get updates for $VM_ID</result>"
-    exit 1
-  fi
-
-  # Read and clean the file content
-  raw_updates=$(cat "$temp_output_file")
-
-  # If the output is empty, set it to an empty array
-  if [ -z "$raw_updates" ]; then
-    raw_updates="[]"
-  fi
-
-  # Clean up the raw updates output
-  raw_updates=$(echo "$raw_updates" | grep -v "WARNING" | grep -v "^$")
-
-  # If the output starts with { (single object) and doesn't end with ], wrap it in array brackets
-  if [[ "$raw_updates" =~ ^\{.*$ ]] && [[ ! "$raw_updates" =~ \]$ ]]; then
-    raw_updates="[$raw_updates]"
-  fi
-
-  # Process the updates with jq and ensure it's an array
-  updates=$(echo "$raw_updates" | /tmp/jq -c -r 'map({title: .Title, kb: .KB, kbArticleIDs: .KBArticleIDs, size: .Size, lastDeploymentChangeTime: .LastDeploymentChangeTime, status: .Status, requires_reboot: .RebootRequired, is_installed: .IsInstalled})')
-
-  rm -f "$temp_output_file"
-  echo "$updates"
-}
-
-check_for_requirements
-if [ $? -ne 0 ]; then
-  echo "<result>Error: Failed to check for requirements</result>"
-  exit 1
-fi
-
-VMS=$(list_vms)
-
-if [ ${#VM_ARRAY[@]} -eq 0 ]; then
-  VM_ARRAY=()
-  while IFS= read -r line; do
-    VM_ARRAY+=("$line")
-  done < <(echo "$VMS" | /tmp/jq -c '.[]')
-fi
-
-if [ ${#VM_ARRAY[@]} -eq 0 ]; then
-  echo "<result>No running Windows VMs found</result>"
-  exit 0
-fi
-
-# Initialize an empty JSON array to store all VM update information
-ALL_UPDATES=()
-
-for VM in "${VM_ARRAY[@]}"; do
-  vm_id=$(echo "$VM" | /tmp/jq -r '.id')
-  vm_name=$(echo "$VM" | /tmp/jq -r '.name')
-  tools_state=$(echo "$VM" | /tmp/jq -r '.tools_state')
-
-  install_modules "$vm_id"
-
-  updates=$(get_list_of_updates "$vm_id" "$vm_name")
-  last_exit_code=$?
-  if [ $last_exit_code -ne 0 ] && [ $last_exit_code -ne 2 ]; then
-    echo "<result>Error: Failed to get updates for $vm_name ($vm_id)</result>"
-    exit 1
-  fi
-  # Check if updates is an empty array
-  HAS_UPDATES=$(echo "$updates" | /tmp/jq 'length > 0')
-  HAS_TOOLS_UPDATE="false"
-  REQUIRES_REBOOT="false"
-
-  updates=$(echo "$updates" | tr -d '\n' | sed 's/},/},/g')
-  # Write updates to a temporary file to avoid shell interpretation issues
-  temp_updates_file=$(mktemp)
-  temp_reboot_file=$(mktemp)
-  printf '%s' "$updates" >"$temp_updates_file"
-
-  /tmp/jq -c '.[]' "$temp_updates_file" | while IFS= read -r update; do
-    status=$(printf '%s' "$update" | /tmp/jq -r '.status')
-    requires_reboot=$(printf '%s' "$update" | /tmp/jq -r '.requires_reboot')
-
-    if [ "$status" = "-D-----" ] && [ "$requires_reboot" = "true" ]; then
-      echo "true" >"$temp_reboot_file"
-    fi
-  done
-  # Read the result back from the temporary file
-  if [ -f "$temp_reboot_file" ] && [ "$(cat "$temp_reboot_file")" = "true" ]; then
-    REQUIRES_REBOOT="true"
-  fi
-
-  rm -f "$temp_reboot_file"
-  rm -f "$temp_updates_file"
-  if [ "$tools_state" = "outdated" ]; then
-    HAS_UPDATES="true"
-    HAS_TOOLS_UPDATE="true"
-  fi
-  if [ "$HAS_UPDATES" = "false" ] && [ "$tools_state" = "outdated" ]; then
-    HAS_UPDATES="true"
-    HAS_TOOLS_UPDATE="true"
-  fi
-
-  # Build a JSON object with name, id, and a boolean indicating if updates are available
-  vm_update_status=$(/tmp/jq -n \
-    --arg name "$vm_name" \
-    --arg id "$vm_id" \
-    --argjson has_updates "$HAS_UPDATES" \
-    --argjson has_tools_update "$HAS_TOOLS_UPDATE" \
-    --argjson requires_reboot "$REQUIRES_REBOOT" \
-    '{name: $name, id: $id, has_updates: $has_updates, has_tools_update: $has_tools_update, requires_reboot: $requires_reboot}')
-
-  if [ "$VERBOSE" = "true" ]; then
-    if [ "$HAS_UPDATES" = "true" ]; then
-      echo "<result>$vm_name has updates available</result>"
-    else
-      echo "<result>$vm_name has no updates available</result>"
-    fi
-  fi
-  ALL_UPDATES+=("$vm_update_status")
-done
-
-# Process the array and output VM update status in a human-readable format
-
-# LINES=$(printf '%s\n' "${ALL_UPDATES[@]}" | /tmp/jq -s '.[] | "\(.name): \(if .has_updates then "Has Windows Updates" else "Up-to-Date" end)"' | sed 's/^"//;s/"$//' | tr '\n' ',' | sed 's/,$//')
-LINES=$(printf '%s\n' "${ALL_UPDATES[@]}" | /tmp/jq -s '.[] | "\(.name): \(if .has_updates then if .requires_reboot then "Updated, requires reboot" else "Has Windows Updates" end else "Up-to-Date" end)"' | sed 's/^"//;s/"$//' | sed 's/,$//')
-
-echo "<result>${LINES[*]}</result>"
+<?xml version="1.0" encoding="UTF-8"?>
+<extensionAttribute>
+  <displayName>Parallels Windows Check Updates</displayName>
+  <description>!/bin/bash.</description>
+  <dataType>string</dataType>
+  <scriptContentsMac>#!/bin/bash&#13;&#13;
+&#13;&#13;
+############&#13;&#13;
+# Check for updates for all the Windows VMs&#13;&#13;
+#&#13;&#13;
+# This script will check for updates for all the Windows VMs&#13;&#13;
+#&#13;&#13;
+# It can return different results depending on the state of the VM.&#13;&#13;
+# - Has Windows Updates: The VM has updates available that are not installed.&#13;&#13;
+# - Updated, requires reboot: The VM has updates available that are installed and require a reboot to apply.&#13;&#13;
+# - Up-to-Date: The VM has no updates available.&#13;&#13;
+#&#13;&#13;
+############&#13;&#13;
+&#13;&#13;
+# Pending restart to apply updates&#13;&#13;
+&#13;&#13;
+USER=$(stat -f%Su /dev/console)&#13;&#13;
+&#13;&#13;
+function check_for_requirements() {&#13;&#13;
+  prlctl_installed=$(which prlctl)&#13;&#13;
+  if [[ -z "$prlctl_installed" ]]; then&#13;&#13;
+    echo "prlctl is not installed"&#13;&#13;
+    exit 1&#13;&#13;
+  fi&#13;&#13;
+&#13;&#13;
+  # testing if jq is correctly working&#13;&#13;
+  if [[ -f "/tmp/jq" ]]; then&#13;&#13;
+    version=$(/tmp/jq --version)&#13;&#13;
+    if [[ $? -ne 0 ]]; then&#13;&#13;
+      rm -f /tmp/jq&#13;&#13;
+      echo "jq is not working, version: $version"&#13;&#13;
+    fi&#13;&#13;
+  fi&#13;&#13;
+&#13;&#13;
+  # Check if jq is installed&#13;&#13;
+  if [[ ! -f "/tmp/jq" ]]; then&#13;&#13;
+    if [ "$VERBOSE" = "true" ]; then&#13;&#13;
+      echo "jq is not installed. Installing temporary version..."&#13;&#13;
+    fi&#13;&#13;
+&#13;&#13;
+    arch=$(uname -m)&#13;&#13;
+    if [ "$arch" = "x86_64" ]; then&#13;&#13;
+      arch="amd64"&#13;&#13;
+    fi&#13;&#13;
+&#13;&#13;
+    curl -Ls -o /tmp/jq https://github.com/jqlang/jq/releases/download/jq-1.7.1/jq-macos-"$arch"&#13;&#13;
+    chmod +x /tmp/jq&#13;&#13;
+    xattr -dr com.apple.quarantine /tmp/jq&#13;&#13;
+  fi&#13;&#13;
+}&#13;&#13;
+&#13;&#13;
+function list_vms() {&#13;&#13;
+  VMS=$(sudo -u $USER prlctl list -a -i --json | /tmp/jq -r 'map(select((.OS == "win-10" or .OS == "win-11" or .OS=="ubuntu") and .State == "running") | {id:.ID, name: .Name, tools_state: .GuestTools.state})')&#13;&#13;
+  echo "$VMS"&#13;&#13;
+}&#13;&#13;
+&#13;&#13;
+function install_modules() {&#13;&#13;
+  VM_ID=$1&#13;&#13;
+  OUTPUT=$(sudo -u $USER prlctl exec $VM_ID powershell -Command "Set-ExecutionPolicy -Scope LocalMachine -ExecutionPolicy RemoteSigned -Force; usoClient StartScan; Install-PackageProvider -Name NuGet -MinimumVersion 2.8.5.201 -Force; Install-Module PSWindowsUpdate -Force -AllowClobber;")&#13;&#13;
+}&#13;&#13;
+&#13;&#13;
+function get_list_of_updates() {&#13;&#13;
+  VM_ID=$1&#13;&#13;
+&#13;&#13;
+  # Create a temporary file to store the complete output&#13;&#13;
+  temp_output_file=$(mktemp)&#13;&#13;
+&#13;&#13;
+  # Execute the command and redirect all output to the temporary file&#13;&#13;
+  sudo -u $USER prlctl exec $VM_ID powershell -Command "Set-ExecutionPolicy -Scope LocalMachine -ExecutionPolicy RemoteSigned -Force; usoClient StartScan; Install-Module PSWindowsUpdate -Force -AllowClobber; Import-Module PSWindowsUpdate; Get-WindowsUpdate | ForEach-Object { \$_ | Select-Object -Property Title,KB,KBArticleIDs,Size,LastDeploymentChangeTime,Status,RebootRequired,IsInstalled } | ConvertTo-Json -Depth 5" &gt;"$temp_output_file" 2&gt;/dev/null&#13;&#13;
+&#13;&#13;
+  last_exit_code=$?&#13;&#13;
+  if [ $last_exit_code -ne 0 ] &amp;&amp; [ $last_exit_code -ne 2 ]; then&#13;&#13;
+    echo "&lt;result&gt;Error: Failed to get updates for $VM_ID&lt;/result&gt;"&#13;&#13;
+    exit 1&#13;&#13;
+  fi&#13;&#13;
+&#13;&#13;
+  # Read and clean the file content&#13;&#13;
+  raw_updates=$(cat "$temp_output_file")&#13;&#13;
+&#13;&#13;
+  # If the output is empty, set it to an empty array&#13;&#13;
+  if [ -z "$raw_updates" ]; then&#13;&#13;
+    raw_updates="[]"&#13;&#13;
+  fi&#13;&#13;
+&#13;&#13;
+  # Clean up the raw updates output&#13;&#13;
+  raw_updates=$(echo "$raw_updates" | grep -v "WARNING" | grep -v "^$")&#13;&#13;
+&#13;&#13;
+  # If the output starts with { (single object) and doesn't end with ], wrap it in array brackets&#13;&#13;
+  if [[ "$raw_updates" =~ ^\{.*$ ]] &amp;&amp; [[ ! "$raw_updates" =~ \]$ ]]; then&#13;&#13;
+    raw_updates="[$raw_updates]"&#13;&#13;
+  fi&#13;&#13;
+&#13;&#13;
+  # Process the updates with jq and ensure it's an array&#13;&#13;
+  updates=$(echo "$raw_updates" | /tmp/jq -c -r 'map({title: .Title, kb: .KB, kbArticleIDs: .KBArticleIDs, size: .Size, lastDeploymentChangeTime: .LastDeploymentChangeTime, status: .Status, requires_reboot: .RebootRequired, is_installed: .IsInstalled})')&#13;&#13;
+&#13;&#13;
+  rm -f "$temp_output_file"&#13;&#13;
+  echo "$updates"&#13;&#13;
+}&#13;&#13;
+&#13;&#13;
+check_for_requirements&#13;&#13;
+if [ $? -ne 0 ]; then&#13;&#13;
+  echo "&lt;result&gt;Error: Failed to check for requirements&lt;/result&gt;"&#13;&#13;
+  exit 1&#13;&#13;
+fi&#13;&#13;
+&#13;&#13;
+VMS=$(list_vms)&#13;&#13;
+&#13;&#13;
+if [ ${#VM_ARRAY[@]} -eq 0 ]; then&#13;&#13;
+  VM_ARRAY=()&#13;&#13;
+  while IFS= read -r line; do&#13;&#13;
+    VM_ARRAY+=("$line")&#13;&#13;
+  done &lt; &lt;(echo "$VMS" | /tmp/jq -c '.[]')&#13;&#13;
+fi&#13;&#13;
+&#13;&#13;
+if [ ${#VM_ARRAY[@]} -eq 0 ]; then&#13;&#13;
+  echo "&lt;result&gt;No running Windows VMs found&lt;/result&gt;"&#13;&#13;
+  exit 0&#13;&#13;
+fi&#13;&#13;
+&#13;&#13;
+# Initialize an empty JSON array to store all VM update information&#13;&#13;
+ALL_UPDATES=()&#13;&#13;
+&#13;&#13;
+for VM in "${VM_ARRAY[@]}"; do&#13;&#13;
+  vm_id=$(echo "$VM" | /tmp/jq -r '.id')&#13;&#13;
+  vm_name=$(echo "$VM" | /tmp/jq -r '.name')&#13;&#13;
+  tools_state=$(echo "$VM" | /tmp/jq -r '.tools_state')&#13;&#13;
+&#13;&#13;
+  install_modules "$vm_id"&#13;&#13;
+&#13;&#13;
+  updates=$(get_list_of_updates "$vm_id" "$vm_name")&#13;&#13;
+  last_exit_code=$?&#13;&#13;
+  if [ $last_exit_code -ne 0 ] &amp;&amp; [ $last_exit_code -ne 2 ]; then&#13;&#13;
+    echo "&lt;result&gt;Error: Failed to get updates for $vm_name ($vm_id)&lt;/result&gt;"&#13;&#13;
+    exit 1&#13;&#13;
+  fi&#13;&#13;
+  # Check if updates is an empty array&#13;&#13;
+  HAS_UPDATES=$(echo "$updates" | /tmp/jq 'length &gt; 0')&#13;&#13;
+  HAS_TOOLS_UPDATE="false"&#13;&#13;
+  REQUIRES_REBOOT="false"&#13;&#13;
+&#13;&#13;
+  updates=$(echo "$updates" | tr -d '\n' | sed 's/},/},/g')&#13;&#13;
+  # Write updates to a temporary file to avoid shell interpretation issues&#13;&#13;
+  temp_updates_file=$(mktemp)&#13;&#13;
+  temp_reboot_file=$(mktemp)&#13;&#13;
+  printf '%s' "$updates" &gt;"$temp_updates_file"&#13;&#13;
+&#13;&#13;
+  /tmp/jq -c '.[]' "$temp_updates_file" | while IFS= read -r update; do&#13;&#13;
+    status=$(printf '%s' "$update" | /tmp/jq -r '.status')&#13;&#13;
+    requires_reboot=$(printf '%s' "$update" | /tmp/jq -r '.requires_reboot')&#13;&#13;
+&#13;&#13;
+    if [ "$status" = "-D-----" ] &amp;&amp; [ "$requires_reboot" = "true" ]; then&#13;&#13;
+      echo "true" &gt;"$temp_reboot_file"&#13;&#13;
+    fi&#13;&#13;
+  done&#13;&#13;
+  # Read the result back from the temporary file&#13;&#13;
+  if [ -f "$temp_reboot_file" ] &amp;&amp; [ "$(cat "$temp_reboot_file")" = "true" ]; then&#13;&#13;
+    REQUIRES_REBOOT="true"&#13;&#13;
+  fi&#13;&#13;
+&#13;&#13;
+  rm -f "$temp_reboot_file"&#13;&#13;
+  rm -f "$temp_updates_file"&#13;&#13;
+  if [ "$tools_state" = "outdated" ]; then&#13;&#13;
+    HAS_UPDATES="true"&#13;&#13;
+    HAS_TOOLS_UPDATE="true"&#13;&#13;
+  fi&#13;&#13;
+  if [ "$HAS_UPDATES" = "false" ] &amp;&amp; [ "$tools_state" = "outdated" ]; then&#13;&#13;
+    HAS_UPDATES="true"&#13;&#13;
+    HAS_TOOLS_UPDATE="true"&#13;&#13;
+  fi&#13;&#13;
+&#13;&#13;
+  # Build a JSON object with name, id, and a boolean indicating if updates are available&#13;&#13;
+  vm_update_status=$(/tmp/jq -n \&#13;&#13;
+    --arg name "$vm_name" \&#13;&#13;
+    --arg id "$vm_id" \&#13;&#13;
+    --argjson has_updates "$HAS_UPDATES" \&#13;&#13;
+    --argjson has_tools_update "$HAS_TOOLS_UPDATE" \&#13;&#13;
+    --argjson requires_reboot "$REQUIRES_REBOOT" \&#13;&#13;
+    '{name: $name, id: $id, has_updates: $has_updates, has_tools_update: $has_tools_update, requires_reboot: $requires_reboot}')&#13;&#13;
+&#13;&#13;
+  if [ "$VERBOSE" = "true" ]; then&#13;&#13;
+    if [ "$HAS_UPDATES" = "true" ]; then&#13;&#13;
+      echo "&lt;result&gt;$vm_name has updates available&lt;/result&gt;"&#13;&#13;
+    else&#13;&#13;
+      echo "&lt;result&gt;$vm_name has no updates available&lt;/result&gt;"&#13;&#13;
+    fi&#13;&#13;
+  fi&#13;&#13;
+  ALL_UPDATES+=("$vm_update_status")&#13;&#13;
+done&#13;&#13;
+&#13;&#13;
+# Process the array and output VM update status in a human-readable format&#13;&#13;
+&#13;&#13;
+# LINES=$(printf '%s\n' "${ALL_UPDATES[@]}" | /tmp/jq -s '.[] | "\(.name): \(if .has_updates then "Has Windows Updates" else "Up-to-Date" end)"' | sed 's/^"//;s/"$//' | tr '\n' ',' | sed 's/,$//')&#13;&#13;
+LINES=$(printf '%s\n' "${ALL_UPDATES[@]}" | /tmp/jq -s '.[] | "\(.name): \(if .has_updates then if .requires_reboot then "Updated, requires reboot" else "Has Windows Updates" end else "Up-to-Date" end)"' | sed 's/^"//;s/"$//' | sed 's/,$//')&#13;&#13;
+&#13;&#13;
+echo "&lt;result&gt;${LINES[*]}&lt;/result&gt;"</scriptContentsMac>
+  <scriptContentsWindows/>
+</extensionAttribute>
