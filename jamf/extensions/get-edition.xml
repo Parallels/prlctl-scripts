@@ -1,53 +1,53 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <extensionAttribute>
   <displayName>Parallels Get Edition</displayName>
-  <description>!/bin/bash.</description>
+  <description>Get the Edition of Parallels Desktop.</description>
   <dataType>string</dataType>
-  <scriptContentsMac>#!/bin/bash&#13;&#13;
-&#13;&#13;
-############&#13;&#13;
-# Get the Edition of Parallels Desktop&#13;&#13;
-#&#13;&#13;
-# Editions can be "standard", "pro", "business" and "enterprise"&#13;&#13;
-# This script can help you find and consolidate licenses under a single IT-managed license&#13;&#13;
-# Standard and Pro Edition are for individuals, while Business and Enterprise enable centralized&#13;&#13;
-# management of these licenses and more.&#13;&#13;
-#&#13;&#13;
-############&#13;&#13;
-&#13;&#13;
-function get_license_state() {&#13;&#13;
-  is_installed=$(which prlsrvctl)&#13;&#13;
-  if [[ $is_installed ]]; then&#13;&#13;
-    license_output=$(prlsrvctl info | grep "License:")&#13;&#13;
-&#13;&#13;
-    if [[ -n "$license_output" ]]; then&#13;&#13;
-      license_state=$(echo "$license_output" | awk -F "state='" '{print $2}' | awk -F "'" '{print $1}')&#13;&#13;
-&#13;&#13;
-      if [[ "$license_state" != "valid" ]]; then&#13;&#13;
-        echo "&lt;result&gt;$license_state&lt;/result&gt;"&#13;&#13;
-        exit 1&#13;&#13;
-      fi&#13;&#13;
-    else&#13;&#13;
-      echo "&lt;result&gt;No License found&lt;/result&gt;"&#13;&#13;
-      exit 1&#13;&#13;
-    fi&#13;&#13;
-  else&#13;&#13;
-    echo "&lt;result&gt;Parallels is not installed&lt;/result&gt;"&#13;&#13;
-    exit 1&#13;&#13;
-  fi&#13;&#13;
-}&#13;&#13;
-&#13;&#13;
-get_license_state&#13;&#13;
-&#13;&#13;
-edition=$(prlsrvctl info --license | awk -F '=' '/edition/ {gsub(/"/, "", $2); print $2}')&#13;&#13;
-&#13;&#13;
-if [[ $edition ]]; then&#13;&#13;
-  echo "&lt;result&gt;$edition&lt;/result&gt;"&#13;&#13;
-else&#13;&#13;
-  echo "&lt;result&gt;No Edition found&lt;/result&gt;"&#13;&#13;
-  exit 1&#13;&#13;
-fi&#13;&#13;
-&#13;&#13;
+  <scriptContentsMac>#!/bin/bash&#13;
+&#13;
+############&#13;
+# Get the Edition of Parallels Desktop&#13;
+#&#13;
+# Editions can be "standard", "pro", "business" and "enterprise"&#13;
+# This script can help you find and consolidate licenses under a single IT-managed license&#13;
+# Standard and Pro Edition are for individuals, while Business and Enterprise enable centralized&#13;
+# management of these licenses and more.&#13;
+#&#13;
+############&#13;
+&#13;
+function get_license_state() {&#13;
+  is_installed=$(which prlsrvctl)&#13;
+  if [[ $is_installed ]]; then&#13;
+    license_output=$(prlsrvctl info | grep "License:")&#13;
+&#13;
+    if [[ -n "$license_output" ]]; then&#13;
+      license_state=$(echo "$license_output" | awk -F "state='" '{print $2}' | awk -F "'" '{print $1}')&#13;
+&#13;
+      if [[ "$license_state" != "valid" ]]; then&#13;
+        echo "&lt;result&gt;$license_state&lt;/result&gt;"&#13;
+        exit 1&#13;
+      fi&#13;
+    else&#13;
+      echo "&lt;result&gt;No License found&lt;/result&gt;"&#13;
+      exit 1&#13;
+    fi&#13;
+  else&#13;
+    echo "&lt;result&gt;Parallels is not installed&lt;/result&gt;"&#13;
+    exit 1&#13;
+  fi&#13;
+}&#13;
+&#13;
+get_license_state&#13;
+&#13;
+edition=$(prlsrvctl info --license | awk -F '=' '/edition/ {gsub(/"/, "", $2); print $2}')&#13;
+&#13;
+if [[ $edition ]]; then&#13;
+  echo "&lt;result&gt;$edition&lt;/result&gt;"&#13;
+else&#13;
+  echo "&lt;result&gt;No Edition found&lt;/result&gt;"&#13;
+  exit 1&#13;
+fi&#13;
+&#13;
 exit 0</scriptContentsMac>
   <scriptContentsWindows/>
 </extensionAttribute>
