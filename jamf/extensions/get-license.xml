@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <extensionAttribute>
-  <displayName>Parallels Get License</displayName>
+  <displayName>Parallels Desktop License Key</displayName>
   <description>Get the license of Parallels Desktop.</description>
   <dataType>string</dataType>
   <scriptContentsMac>#!/bin/bash&#13;
