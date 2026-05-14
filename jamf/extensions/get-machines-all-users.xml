@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <extensionAttribute>
-  <displayName>Parallels Get Machines All Users</displayName>
+  <displayName>Parallels VMs</displayName>
   <description>Get Parallels virtual machines from all users.</description>
   <dataType>string</dataType>
   <scriptContentsMac>#!/bin/bash&#13;
