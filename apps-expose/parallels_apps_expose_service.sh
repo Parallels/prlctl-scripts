@@ -19,8 +19,20 @@ DEST_DIR="$SOURCE_ROOT/Windows Apps"
 # Poll interval in seconds
 : "${POLL_INTERVAL:=60}"
 
-# Applications to exclude (grep patterns)
-# Applications to exclude
+# Filter mode: "exclude" (default) or "include"
+# - "exclude": all apps are exposed EXCEPT those listed in EXCLUDED_APPS
+# - "include": ONLY apps listed in INCLUDED_APPS are exposed
+: "${FILTER_MODE:=exclude}"
+
+# Applications to include (used only when FILTER_MODE=include)
+# Add each app as a separate line in the array.
+# These are treated as Regex patterns.
+INCLUDED_APPS=(
+    # "Power BI Desktop"
+    # "Excel"
+)
+
+# Applications to exclude (used only when FILTER_MODE=exclude)
 # Add each app as a separate line in the array
 # These are treated as Regex patterns.
 EXCLUDED_APPS=(
@@ -126,6 +138,40 @@ is_excluded() {
     return 1 # False, not excluded
 }
 
+# Check if an app name matches any inclusion pattern
+is_included() {
+    local app_name="$1"
+    local pattern
+
+    # Strip .app for easier matching if present
+    local clean_name="${app_name%.app}"
+
+    for pattern in "${INCLUDED_APPS[@]}"; do
+        local regex="^${pattern}$"
+        if [[ "$clean_name" =~ $regex ]]; then
+            return 0 # True, it is included
+        fi
+    done
+    return 1 # False, not included
+}
+
+# Returns 0 (true) if the app should be exposed based on the current FILTER_MODE
+should_expose() {
+    local app_name="$1"
+    if [[ "$FILTER_MODE" == "include" ]]; then
+        is_included "$app_name"
+    else
+        ! is_excluded "$app_name"
+    fi
+}
+
+# Validate configuration at startup
+validate_config() {
+    if [[ "$FILTER_MODE" == "include" && ${#INCLUDED_APPS[@]} -eq 0 ]]; then
+        log "Warning: FILTER_MODE is 'include' but INCLUDED_APPS is empty. No apps will be exposed. Add entries to INCLUDED_APPS or switch to FILTER_MODE=exclude."
+    fi
+}
+
 # ==============================================================================
 # Core Logic
 # ==============================================================================
@@ -148,9 +194,9 @@ sync_apps() {
             if [[ -L "$link" ]]; then
                 link_name=$(basename "$link")
                 
-                # Check 1: Is it excluded?
-                if is_excluded "$link_name"; then
-                    log "Removing excluded link: $link_name"
+                # Check 1: Should it no longer be exposed?
+                if ! should_expose "$link_name"; then
+                    log "Removing link (not eligible in current mode): $link_name"
                     rm "$link"
                     changed=1
                     continue
@@ -179,8 +225,8 @@ sync_apps() {
 
         app_name=$(basename "$app_path")
         
-        # Check Exclusions using helper function
-        if is_excluded "$app_name"; then
+        # Check if app should be exposed based on current filter mode
+        if ! should_expose "$app_name"; then
             continue
         fi
 
@@ -341,6 +387,7 @@ EOF
 # ==============================================================================
 
 log "Agent started. Monitoring $SOURCE_ROOT"
+validate_config
 ensure_dest_dir
 
 FIRST_RUN=1

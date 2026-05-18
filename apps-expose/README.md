@@ -55,7 +55,54 @@ This tells macOS that the background service with this label prefix is managed, 
 ## Configuration
 
 The agent is configured via environment variables at the top of `/usr/local/bin/parallels_apps_expose_service.sh`.
-Default exclusions include:
+
+### Filter Mode
+
+The service supports two filter modes, controlled by the `FILTER_MODE` variable:
+
+| Mode | Variable Value | Behaviour |
+|------|---------------|-----------|
+| **Exclude** (default) | `FILTER_MODE=exclude` | Every app is exposed **except** those listed in `EXCLUDED_APPS`. |
+| **Include** (allowlist) | `FILTER_MODE=include` | **Only** apps listed in `INCLUDED_APPS` are exposed. Everything else is hidden. |
+
+#### Using Exclude mode (default)
+
+Leave `FILTER_MODE` at its default value (`exclude`) and list the apps you want to **hide** in the `EXCLUDED_APPS` array:
+
+```bash
+FILTER_MODE=exclude   # default, can be omitted
+
+EXCLUDED_APPS=(
+    "Calculator"
+    "Camera"
+    "Notepad"
+    # … add more apps to hide
+)
+```
+
+#### Using Include mode (allowlist)
+
+Set `FILTER_MODE=include` and list **only** the apps you want to **expose** in the `INCLUDED_APPS` array. All other apps will be ignored:
+
+```bash
+FILTER_MODE=include
+
+INCLUDED_APPS=(
+    "Power BI Desktop"
+    "Excel"
+    # … only these apps will appear in the Windows Apps folder
+)
+```
+
+> [!WARNING]
+> If `FILTER_MODE=include` is set but `INCLUDED_APPS` is empty, **no apps will be exposed**. The service will log a warning at startup to help catch this misconfiguration.
+
+> [!NOTE]
+> Both `EXCLUDED_APPS` and `INCLUDED_APPS` entries are treated as **regular expression** patterns anchored to the full app name (without the `.app` extension). Special characters such as `(`, `)`, and `.` must be escaped with a backslash — for example `"Microsoft 365 \(Office\)"`.
+
+### Default Excluded Applications (Exclude mode)
+
+The following apps are excluded by default when using `FILTER_MODE=exclude`:
 - Calculator
 - Camera
 - Character Map
@@ -111,7 +158,7 @@ Default exclusions include:
 - Windows PowerShell
 - Windows Security
 
-To modify exclusions, edit the `EXCLUSIONS` variable in the script.
+To modify the filter mode or exclusion/inclusion lists, edit the corresponding variables in the script.
 
 ## Uninstalling
 
