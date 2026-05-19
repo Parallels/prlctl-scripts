@@ -1,0 +1,27 @@
+#!/bin/bash
+
+############
+# Get the license activation type of Parallels Desktop
+#
+# This script will get the license activation type of Parallels Desktop copy
+# Example: LIC_KEY, SSO, <empty> 
+#
+############
+
+is_installed=$(which prlsrvctl)
+
+if [[ $is_installed ]]; then
+  prlsrvctl update-license >/dev/null 2>&1 || true
+  license_activation_type=$(prlsrvctl info --license --json | plutil -extract activation_type raw -o - - 2>/dev/null)
+
+  if [[ -n "$license_activation_type" ]]; then
+      echo "<result>$license_activation_type</result>"
+  else
+    echo "<result>Activation type not found</result>"
+  fi
+else
+  echo "<result>Parallels is not installed</result>"
+  exit 1
+fi
+
+exit 0
