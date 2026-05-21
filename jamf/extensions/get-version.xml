@@ -1,45 +1,52 @@
-#!/bin/bash
-
-############
-# Get the version of Parallels Desktop
-#
-# This script will get the version of Parallels Desktop
-# Example output: Desktop 20.2.2-55879
-############
-
-function get_license_state() {
-  is_installed=$(which prlsrvctl)
-  if [[ $is_installed ]]; then
-    license_output=$(prlsrvctl info | grep "License:")
-
-    if [[ -n "$license_output" ]]; then
-      license_state=$(echo "$license_output" | awk -F "state='" '{print $2}' | awk -F "'" '{print $1}')
-
-      if [[ "$license_state" != "valid" ]]; then
-        echo "<result>$license_state</result>"
-        exit 1
-      fi
-    else
-      echo "<result>No License found</result>"
-      exit 1
-    fi
-  else
-    echo "<result>Parallels is not installed</result>"
-    exit 1
-  fi
-}
-
-get_license_state
-
-info=$(prlsrvctl info | awk -F ': ' '/^Version/ {print $2}')
-
-if [[ $info ]]; then
-  ##if info is present, return that
-  echo "<result>$info</result>"
-
-else
-  ##if no info is present, return "Not Installed"
-  echo "<result>Not Installed</result>"
-fi
-
-exit 0
+<?xml version="1.0" encoding="UTF-8"?>
+<extensionAttribute>
+  <displayName>Parallels Get Version</displayName>
+  <description>Get the version of Parallels Desktop.</description>
+  <dataType>string</dataType>
+  <scriptContentsMac>#!/bin/bash&#13;
+&#13;
+############&#13;
+# Get the version of Parallels Desktop&#13;
+#&#13;
+# This script will get the version of Parallels Desktop&#13;
+# Example output: Desktop 20.2.2-55879&#13;
+############&#13;
+&#13;
+function get_license_state() {&#13;
+  is_installed=$(which prlsrvctl)&#13;
+  if [[ $is_installed ]]; then&#13;
+    license_output=$(prlsrvctl info | grep "License:")&#13;
+&#13;
+    if [[ -n "$license_output" ]]; then&#13;
+      license_state=$(echo "$license_output" | awk -F "state='" '{print $2}' | awk -F "'" '{print $1}')&#13;
+&#13;
+      if [[ "$license_state" != "valid" ]]; then&#13;
+        echo "&lt;result&gt;$license_state&lt;/result&gt;"&#13;
+        exit 1&#13;
+      fi&#13;
+    else&#13;
+      echo "&lt;result&gt;No License found&lt;/result&gt;"&#13;
+      exit 1&#13;
+    fi&#13;
+  else&#13;
+    echo "&lt;result&gt;Parallels is not installed&lt;/result&gt;"&#13;
+    exit 1&#13;
+  fi&#13;
+}&#13;
+&#13;
+get_license_state&#13;
+&#13;
+info=$(prlsrvctl info | awk -F ': ' '/^Version/ {print $2}')&#13;
+&#13;
+if [[ $info ]]; then&#13;
+  ##if info is present, return that&#13;
+  echo "&lt;result&gt;$info&lt;/result&gt;"&#13;
+&#13;
+else&#13;
+  ##if no info is present, return "Not Installed"&#13;
+  echo "&lt;result&gt;Not Installed&lt;/result&gt;"&#13;
+fi&#13;
+&#13;
+exit 0</scriptContentsMac>
+  <scriptContentsWindows/>
+</extensionAttribute>

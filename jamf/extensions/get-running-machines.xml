@@ -1,52 +1,59 @@
-#!/bin/bash
-
-############
-# Get the running Parallels Desktop virtual machines from the current user
-#
-# Note that this is a snapshot in time of Jamf collecting the extended attributes.
-# If the user has been using virtual machines at other times, they are not shown.
-#
-############
-
-function get_license_state() {
-  is_installed=$(which prlsrvctl)
-  if [[ $is_installed ]]; then
-    license_output=$(prlsrvctl info | grep "License:")
-
-    if [[ -n "$license_output" ]]; then
-      license_state=$(echo "$license_output" | awk -F "state='" '{print $2}' | awk -F "'" '{print $1}')
-
-      if [[ "$license_state" != "valid" ]]; then
-        echo "<result>$license_state</result>"
-        exit 1
-      fi
-    else
-      echo "<result>No License found</result>"
-      exit 1
-    fi
-  else
-    echo "<result>Parallels is not installed</result>"
-    exit 1
-  fi
-}
-
-get_license_state
-
-# Get the currently logged-in user
-user=$(who | awk '($2 ~ /console/) { print $1 }')
-
-# If no console user is found, fall back to $USER
-if [[ -z "$user" ]]; then
-  user=$USER
-fi
-
-lines=$(sudo -u $user prlctl list -a | awk -v my_status="running" '$2 ~ my_status { $1=$2=$3="";
-gsub(/^ */, ""); print }' | tr '\n' ',' | sed 's/,$//')
-
-if [[ $lines ]]; then
-  echo "<result>$lines</result>"
-else
-  echo "<result>No running machines found</result>"
-fi
-
-exit 0
+<?xml version="1.0" encoding="UTF-8"?>
+<extensionAttribute>
+  <displayName>Parallels Get Running Machines</displayName>
+  <description>Get the running Parallels Desktop virtual machines from the current user.</description>
+  <dataType>string</dataType>
+  <scriptContentsMac>#!/bin/bash&#13;
+&#13;
+############&#13;
+# Get the running Parallels Desktop virtual machines from the current user&#13;
+#&#13;
+# Note that this is a snapshot in time of Jamf collecting the extended attributes.&#13;
+# If the user has been using virtual machines at other times, they are not shown.&#13;
+#&#13;
+############&#13;
+&#13;
+function get_license_state() {&#13;
+  is_installed=$(which prlsrvctl)&#13;
+  if [[ $is_installed ]]; then&#13;
+    license_output=$(prlsrvctl info | grep "License:")&#13;
+&#13;
+    if [[ -n "$license_output" ]]; then&#13;
+      license_state=$(echo "$license_output" | awk -F "state='" '{print $2}' | awk -F "'" '{print $1}')&#13;
+&#13;
+      if [[ "$license_state" != "valid" ]]; then&#13;
+        echo "&lt;result&gt;$license_state&lt;/result&gt;"&#13;
+        exit 1&#13;
+      fi&#13;
+    else&#13;
+      echo "&lt;result&gt;No License found&lt;/result&gt;"&#13;
+      exit 1&#13;
+    fi&#13;
+  else&#13;
+    echo "&lt;result&gt;Parallels is not installed&lt;/result&gt;"&#13;
+    exit 1&#13;
+  fi&#13;
+}&#13;
+&#13;
+get_license_state&#13;
+&#13;
+# Get the currently logged-in user&#13;
+user=$(who | awk '($2 ~ /console/) { print $1 }')&#13;
+&#13;
+# If no console user is found, fall back to $USER&#13;
+if [[ -z "$user" ]]; then&#13;
+  user=$USER&#13;
+fi&#13;
+&#13;
+lines=$(sudo -u $user prlctl list -a | awk -v my_status="running" '$2 ~ my_status { $1=$2=$3="";&#13;
+gsub(/^ */, ""); print }' | tr '\n' ',' | sed 's/,$//')&#13;
+&#13;
+if [[ $lines ]]; then&#13;
+  echo "&lt;result&gt;$lines&lt;/result&gt;"&#13;
+else&#13;
+  echo "&lt;result&gt;No running machines found&lt;/result&gt;"&#13;
+fi&#13;
+&#13;
+exit 0</scriptContentsMac>
+  <scriptContentsWindows/>
+</extensionAttribute>
