@@ -1,0 +1,96 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<extensionAttribute>
+  <displayName>Parallels BitLocker Status</displayName>
+  <description>Returns BitLocker protection status for Windows Parallels VMs for the console user.</description>
+  <dataType>string</dataType>
+  <scriptContentsMac>#!/bin/bash&#13;
+&#13;
+function get_license_state() {&#13;
+  is_installed=$(which prlsrvctl)&#13;
+  if [[ $is_installed ]]; then&#13;
+    license_output=$(prlsrvctl info | grep "License:")&#13;
+&#13;
+    if [[ -n "$license_output" ]]; then&#13;
+      license_state=$(echo "$license_output" | awk -F "state='" '{print $2}' | awk -F "\'" '{print $1}')&#13;
+&#13;
+      if [[ "$license_state" != "valid" ]]; then&#13;
+        echo "&lt;result&gt;$license_state&lt;/result&gt;"&#13;
+        exit 1&#13;
+      fi&#13;
+    else&#13;
+      echo "&lt;result&gt;No License found&lt;/result&gt;"&#13;
+      exit 1&#13;
+    fi&#13;
+  else&#13;
+    echo "&lt;result&gt;Parallels is not installed&lt;/result&gt;"&#13;
+    exit 1&#13;
+  fi&#13;
+}&#13;
+&#13;
+get_license_state&#13;
+&#13;
+is_prlctl_installed=$(which prlctl)&#13;
+if [[ -z "$is_prlctl_installed" ]]; then&#13;
+  echo "&lt;result&gt;Parallels is not installed&lt;/result&gt;"&#13;
+  exit 1&#13;
+fi&#13;
+&#13;
+user=$(stat -f%Su /dev/console)&#13;
+result_items=""&#13;
+&#13;
+VMS_DATA=$(sudo -u "$user" prlctl list -a -i --json 2&gt;/dev/null \&#13;
+    | awk -F'"' '&#13;
+    /\{[[:space:]]*$/  { depth++; if (depth==1) { id=""; name=""; state=""; os="" }; next }&#13;
+    /^[[:space:]]*\},?[[:space:]]*$/ {&#13;
+      if (depth==1 &amp;&amp; os=="win-11") print id "\t" name "\t" state&#13;
+      depth--; next&#13;
+    }&#13;
+    depth!=1  { next }&#13;
+    $2=="ID"    { id=$4 }&#13;
+    $2=="Name"  { name=$4 }&#13;
+    $2=="State" { state=$4 }&#13;
+    $2=="OS"    { os=$4 }&#13;
+' || true)&#13;
+&#13;
+if [[ -n "$VMS_DATA" ]]; then&#13;
+  while IFS= read -r vm_line || [[ -n "$vm_line" ]]; do&#13;
+    vm_id=$(echo "$vm_line" | cut -f1)&#13;
+    vm_name=$(echo "$vm_line" | cut -f2)&#13;
+    vm_state=$(echo "$vm_line" | cut -f3)&#13;
+    [[ -z "$vm_id" ]] &amp;&amp; continue&#13;
+&#13;
+    if [[ "$vm_state" != "running" ]]; then&#13;
+      item="$vm_name: not running"&#13;
+      if [[ -n "$result_items" ]]; then&#13;
+        result_items="$result_items, $item"&#13;
+      else&#13;
+        result_items="$item"&#13;
+      fi&#13;
+      continue&#13;
+    fi&#13;
+&#13;
+    output=$(sudo -u "$user" prlctl exec "$vm_id" cmd /C "manage-bde -status C:" &lt;/dev/null 2&gt;&amp;1 || true)&#13;
+    status=$(echo "$output" | tr -d '\r' | awk -F': *' '/Protection Status:/{print $2; exit}')&#13;
+&#13;
+    if [[ -z "$status" ]]; then&#13;
+      status="query failed"&#13;
+    fi&#13;
+&#13;
+    item="$vm_name: $status"&#13;
+    if [[ -n "$result_items" ]]; then&#13;
+      result_items="$result_items, $item"&#13;
+    else&#13;
+      result_items="$item"&#13;
+    fi&#13;
+  done &lt;&lt;&lt; "$VMS_DATA"&#13;
+fi&#13;
+&#13;
+if [[ -n "$result_items" ]]; then&#13;
+  echo "&lt;result&gt;$result_items&lt;/result&gt;"&#13;
+else&#13;
+  echo "&lt;result&gt;No Windows VMs found&lt;/result&gt;"&#13;
+fi&#13;
+&#13;
+exit 0</scriptContentsMac>
+  <scriptContentsWindows/>
+</extensionAttribute>
