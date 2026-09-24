@@ -54,6 +54,22 @@ function Install {
   # Download the latest runner package
   curl -s -o "actions-runner-linux-${ARCHITECTURE}-${LATEST_VERSION}.tar.gz" -L "https://github.com/actions/runner/releases/download/${LATEST_VERSION}/actions-runner-linux-${ARCHITECTURE}-${LASTEST_VERSION_SMALL}.tar.gz"
 
+  echo "Verifying checksum against GitHub's published release SHA-256"
+  # GitHub publishes a SHA-256 for each asset in the release body itself
+  # (wrapped in HTML comments), not as a separate checksums file.
+  RELEASE_BODY=$(curl -s https://api.github.com/repos/actions/runner/releases/latest | jq -r '.body')
+  EXPECTED_SHA=$(echo "$RELEASE_BODY" | grep -oP "(?<=BEGIN SHA linux-${ARCHITECTURE} -->)[0-9a-f]+")
+  if [ -z "$EXPECTED_SHA" ]; then
+    echo "Could not find a published checksum for this asset -- refusing to install unverified"
+    exit 1
+  fi
+  ACTUAL_SHA=$(sha256sum "actions-runner-linux-${ARCHITECTURE}-${LATEST_VERSION}.tar.gz" | awk '{print $1}')
+  if [ "$EXPECTED_SHA" != "$ACTUAL_SHA" ]; then
+    echo "Checksum mismatch: expected $EXPECTED_SHA, got $ACTUAL_SHA"
+    exit 1
+  fi
+  echo "Checksum verified: $ACTUAL_SHA"
+
   echo "Extracting the latest version of the GitHub Actions runner"
   # Extract the installer
   tar xzf "./actions-runner-linux-${ARCHITECTURE}-${LATEST_VERSION}.tar.gz"
