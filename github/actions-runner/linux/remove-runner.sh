@@ -63,7 +63,10 @@ function Cleanup() {
   sudo rm -rf $DESTINATION
 
   echo "Removing the service"
-  rm -f /etc/systemd/system/actions.runner.service
+  # configure-runner.sh creates action-runner.service (no "s", different name) --
+  # this line previously targeted actions.runner.service, which never existed,
+  # so the systemd unit file was silently left behind on every removal.
+  rm -f /etc/systemd/system/action-runner.service
   systemctl daemon-reload
 }
 
