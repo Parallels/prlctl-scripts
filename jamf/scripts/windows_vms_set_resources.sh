@@ -11,6 +11,9 @@
 # The settings can only be changed while a VM is stopped. VMs that are not
 # stopped are skipped, and are updated the next time the script runs.
 #
+# The App Delivery runtime VM is always skipped, even when it is targeted by
+# name or ID.
+#
 # Requirements:
 # - prlctl
 #
@@ -31,6 +34,7 @@ if [ -n "${6:-}" ]; then TARGET_VM_ID="$6"; fi
 
 PRLCTL="prlctl"
 USER=""
+APP_DELIVERY_VM_ID=""
 HAS_ERRORS="false"
 
 function check_for_requirements() {
@@ -57,22 +61,53 @@ function check_for_requirements() {
   esac
 }
 
+function run_prlctl() {
+  # prlctl may try to write a profiling file to the current folder, which is
+  # read-only when run from a management tool. LLVM_PROFILE_FILE silences that
+  # harmless error. It is passed through env because sudo clears the environment.
+  sudo -u "$USER" env LLVM_PROFILE_FILE=/dev/null "$PRLCTL" "$@"
+}
+
+function normalize_id() {
+  echo "$1" | tr -d '{} ' | tr '[:upper:]' '[:lower:]'
+}
+
+function get_app_delivery_vm_id() {
+  USER_HOME=$(dscl . -read /Users/"$USER" NFSHomeDirectory 2>/dev/null | awk '{print $2}')
+  APP_DELIVERY_PLIST="$USER_HOME/Library/Group Containers/4C6364ACXT.com.parallels.desktop.appbundles/Library/Preferences/4C6364ACXT.com.parallels.desktop.appbundles.plist"
+
+  if [ -f "$APP_DELIVERY_PLIST" ]; then
+    normalize_id "$(defaults read "$APP_DELIVERY_PLIST" ProvisionedVMUUID 2>/dev/null)"
+  fi
+}
+
+function get_vm_id() {
+  VM_ID=$1
+
+  normalize_id "$(run_prlctl list -i "$VM_ID" 2>/dev/null | awk '/^ID:/ {print $2; exit}')"
+}
+
 function list_vms() {
   if [ -n "$TARGET_VM_ID" ]; then
     echo "$TARGET_VM_ID"
   else
-    sudo -u "$USER" "$PRLCTL" list -a -o uuid,ostype | awk '/win/ {print $1}'
+    run_prlctl list -a -i | awk '/^ID:/ {id=$2} /^OS:/ && $2 ~ /^win/ {print id}'
   fi
 }
 
 function get_vm_state() {
   VM_ID=$1
 
-  sudo -u "$USER" "$PRLCTL" list "$VM_ID" -a -o status | tail -n 1 | tr -d ' '
+  run_prlctl list "$VM_ID" -a -o status | tail -n 1 | tr -d ' '
 }
 
 function set_vm_resources() {
   VM_ID=$1
+
+  if [ -n "$APP_DELIVERY_VM_ID" ] && [ "$(get_vm_id "$VM_ID")" = "$APP_DELIVERY_VM_ID" ]; then
+    echo "Skipping $VM_ID because it is the App Delivery runtime VM"
+    return 0
+  fi
 
   VM_STATE=$(get_vm_state "$VM_ID")
   if [ "$VM_STATE" != "stopped" ]; then
@@ -81,7 +116,7 @@ function set_vm_resources() {
   fi
 
   echo "Setting $VM_ID to $MEMORY_MB MB of memory and $CPU_COUNT CPU cores"
-  sudo -u "$USER" "$PRLCTL" set "$VM_ID" --memsize "$MEMORY_MB" --cpus "$CPU_COUNT"
+  run_prlctl set "$VM_ID" --memsize "$MEMORY_MB" --cpus "$CPU_COUNT"
   last_exit_code=$?
   if [ $last_exit_code -ne 0 ]; then
     echo "Error: Failed to set resources for VM $VM_ID"
@@ -89,7 +124,7 @@ function set_vm_resources() {
     return 1
   fi
 
-  sudo -u "$USER" "$PRLCTL" list -i "$VM_ID" | grep -E '^[[:space:]]*(cpu|memory)[[:space:]]'
+  run_prlctl list -i "$VM_ID" | grep -E '^[[:space:]]*(cpu|memory)[[:space:]]'
 }
 
 USER=$(stat -f%Su /dev/console)
@@ -101,6 +136,11 @@ fi
 check_for_requirements
 
 echo "Using logged in user: $USER"
+
+APP_DELIVERY_VM_ID=$(get_app_delivery_vm_id)
+if [ -n "$APP_DELIVERY_VM_ID" ]; then
+  echo "Found App Delivery runtime VM, it will be skipped: $APP_DELIVERY_VM_ID"
+fi
 
 VM_COUNT=0
 while IFS= read -r VM; do
